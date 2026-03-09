@@ -11,6 +11,7 @@ pub enum BatchOp {
     Fetch,
     Checkout(String),
     Commit(String),
+    Git(Vec<String>),
 }
 
 impl BatchOp {
@@ -22,6 +23,7 @@ impl BatchOp {
             BatchOp::Fetch => "Fetching",
             BatchOp::Checkout(_) => "Checking out",
             BatchOp::Commit(_) => "Committing",
+            BatchOp::Git(_) => "Running git",
         }
     }
 }
@@ -49,6 +51,7 @@ pub fn execute_batch_async(
         BatchOp::Fetch => OpArgs::Simple(SimpleOp::Fetch),
         BatchOp::Checkout(b) => OpArgs::WithArg(ArgOp::Checkout, b.clone()),
         BatchOp::Commit(m) => OpArgs::WithArg(ArgOp::Commit, m.clone()),
+        BatchOp::Git(args) => OpArgs::Git(args.clone()),
     };
 
     for (name, path) in tasks {
@@ -63,6 +66,10 @@ pub fn execute_batch_async(
                     git_runner::checkout(&path, branch, false)
                 }
                 OpArgs::WithArg(ArgOp::Commit, msg) => git_runner::commit(&path, msg),
+                OpArgs::Git(args) => {
+                    let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+                    git_runner::run_git(&path, &str_args)
+                }
             };
             let _ = tx.send(BatchResult {
                 repo_name: name,
@@ -83,6 +90,7 @@ pub fn execute_batch_async(
 enum OpArgs {
     Simple(SimpleOp),
     WithArg(ArgOp, String),
+    Git(Vec<String>),
 }
 
 #[derive(Clone)]

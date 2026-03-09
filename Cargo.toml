@@ -20,6 +20,8 @@ walkdir = "2"
 anyhow = "1"
 rayon = "1"
 console = "0.15"
+unicode-width = "0.1"
+unicode-segmentation = "1.10"
 ratatui = "0.26"
 crossterm = "0.27"
 

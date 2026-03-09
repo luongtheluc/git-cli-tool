@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 mod cli;
 mod git_runner;
 mod repo_scanner;
+mod text_utils;
 mod tui;
 mod ui;
 

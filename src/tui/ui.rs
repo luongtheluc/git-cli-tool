@@ -227,6 +227,7 @@ fn render_footer(f: &mut Frame, app: &App, area: Rect) {
         let prompt = match app.input_purpose {
             super::app::InputPurpose::CommitMessage => "COMMIT MSG: ",
             super::app::InputPurpose::BranchName => "BRANCH: ",
+            super::app::InputPurpose::GitCommand => "GIT ARGS: ",
             super::app::InputPurpose::None => "> ",
         };
         let line = Line::from(vec![
@@ -259,6 +260,7 @@ fn render_footer(f: &mut Frame, app: &App, area: Rect) {
         hint(" f "), Span::raw("Fetch "),
         hint(" c "), Span::raw("Commit "),
         hint(" b "), Span::raw("Branch "),
+        hint(" g "), Span::raw("Git args "),
         hint(" r "), Span::raw("Refresh "),
         hint(" q "), Span::raw("Quit"),
         Span::styled(

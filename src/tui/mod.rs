@@ -60,7 +60,47 @@ fn event_loop(
     loop {
         terminal.draw(|f| ui::render(f, app))?;
 
-        if event::poll(Duration::from_millis(100))? {
+
+        // Poll batch operation results (non-blocking, incremental updates)
+        if let Some(_) = app.batch_receiver.as_ref() {
+            let batch_complete = app.poll_batch_results();
+            
+            if batch_complete {
+                // Batch finished - show completion message and keep modal open for review.
+                app.animation_start = None;
+                if let Some(app::OperationProgress::Batch { total, completed: _, op_name, results }) 
+                    = app.operation_progress.as_ref()
+                {
+                    let success = results.iter().filter(|r| r.success).count();
+                    let failed: Vec<String> = results
+                        .iter()
+                        .filter(|r| !r.success)
+                        .map(|r| format!("{}: {}", r.repo_name, r.message))
+                        .collect();
+
+                    if failed.is_empty() {
+                        app.message = Some(format!("{} — {}/{} succeeded", op_name, success, total));
+                    } else {
+                        app.message = Some(format!(
+                            "{} — {}/{} succeeded | Failed: {}",
+                            op_name,
+                            success,
+                            total,
+                            failed.join(", ")
+                        ));
+                    }
+                }
+            }
+        }
+
+        // Dynamic poll interval: 50ms during operations for smooth animation, 100ms idle
+        let poll_duration = if app.operation_progress.is_some() {
+            Duration::from_millis(50)
+        } else {
+            Duration::from_millis(100)
+        };
+
+        if event::poll(poll_duration)? {
             events::handle(app)?;
         }
 

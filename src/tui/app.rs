@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::sync::mpsc;
+use std::time::Instant;
 
 use ratatui::style::Color;
 
@@ -24,6 +26,7 @@ pub enum InputMode {
 pub enum InputPurpose {
     CommitMessage,
     BranchName,
+    GitCommand,
     None,
 }
 
@@ -117,17 +120,6 @@ impl OperationProgress {
     }
 }
 
-/// Live progress state for a running batch operation (legacy, kept for reference)
-#[allow(dead_code)]
-pub struct BatchProgress {
-    pub total: usize,
-    pub completed: usize,
-    /// Display name like "Pulling", "Pushing", etc.
-    pub op_name: String,
-    #[allow(dead_code)]
-    pub results: Vec<BatchResult>,
-}
-
 /// Result of a single repo operation within a batch
 #[derive(Clone)]
 pub struct BatchResult {
@@ -159,6 +151,12 @@ pub struct App {
     pub input_purpose: InputPurpose,
     /// Live progress for a running batch or single operation (None = idle)
     pub operation_progress: Option<OperationProgress>,
+    /// Channel receiver for incremental batch operation results
+    pub batch_receiver: Option<mpsc::Receiver<BatchResult>>,
+    /// Animation start time for smooth spinner rotation
+    pub animation_start: Option<Instant>,
+    /// Scroll offset for batch result lines shown in modal
+    pub batch_result_scroll: usize,
 }
 
 impl App {
@@ -176,7 +174,25 @@ impl App {
             input_buffer: String::new(),
             input_purpose: InputPurpose::None,
             operation_progress: None,
+            batch_receiver: None,
+            animation_start: None,
+            batch_result_scroll: 0,
         }
+    }
+
+    /// Reset scroll position for a new/closed batch modal
+    pub fn reset_batch_result_scroll(&mut self) {
+        self.batch_result_scroll = 0;
+    }
+
+    /// Scroll result list down by `delta` lines
+    pub fn scroll_batch_results_down(&mut self, delta: usize) {
+        self.batch_result_scroll = self.batch_result_scroll.saturating_add(delta);
+    }
+
+    /// Scroll result list up by `delta` lines
+    pub fn scroll_batch_results_up(&mut self, delta: usize) {
+        self.batch_result_scroll = self.batch_result_scroll.saturating_sub(delta);
     }
 
     pub fn move_up(&mut self) {
@@ -249,6 +265,7 @@ impl App {
             self.operation_progress = Some(OperationProgress::Single {
                 op_name: format!("Refreshing {}", repo.name),
             });
+            self.animation_start = Some(Instant::now());
 
             match git_runner::status_files(&repo.path) {
                 Ok(files) => {
@@ -272,6 +289,7 @@ impl App {
 
             // Clear progress modal after operation completes
             self.operation_progress = None;
+            self.animation_start = None;
         }
     }
 
@@ -280,6 +298,59 @@ impl App {
         for i in indices {
             self.status_cache.remove(i);
         }
+    }
+
+    /// Poll batch operation receiver for new results (non-blocking)
+    /// Returns true if batch is complete, false if still in progress
+    pub fn poll_batch_results(&mut self) -> bool {
+        let Some(rx) = self.batch_receiver.as_ref() else {
+            return true; // No operation in progress
+        };
+
+        // Collect all available results without blocking
+        let mut results_this_tick = Vec::new();
+        let mut disconnected = false;
+        loop {
+            match rx.try_recv() {
+                Ok(result) => results_this_tick.push(result),
+                Err(mpsc::TryRecvError::Empty) => break,
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    disconnected = true;
+                    break;
+                }
+            }
+        }
+
+        // Update progress with new results
+        if let Some(OperationProgress::Batch {
+            ref mut completed,
+            ref mut results,
+            total,
+            ..
+        }) = self.operation_progress
+        {
+            *completed += results_this_tick.len();
+            results.extend(results_this_tick);
+
+            if disconnected && *completed < total {
+                let missing = total.saturating_sub(*completed);
+                results.push(BatchResult {
+                    repo_name: "batch".to_string(),
+                    success: false,
+                    message: format!("Channel closed early: {} result(s) missing", missing),
+                });
+                *completed = total;
+            }
+
+            // Check if batch is complete
+            if *completed >= total {
+                // Batch complete - cleanup receiver and return true
+                self.batch_receiver = None;
+                return true;
+            }
+        }
+
+        false // Still in progress
     }
 
     /// Status entries for the currently selected repo (empty slice if uncached)

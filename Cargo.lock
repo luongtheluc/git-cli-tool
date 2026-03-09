@@ -563,6 +563,8 @@ dependencies = [
  "ratatui",
  "rayon",
  "tempfile",
+ "unicode-segmentation",
+ "unicode-width 0.1.14",
  "walkdir",
  "winreg",
 ]
