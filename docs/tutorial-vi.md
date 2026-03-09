@@ -6,15 +6,17 @@
 
 ## Mục lục
 
-1. [Cài đặt](#cài-đặt)
-2. [Cấu trúc workspace](#cấu-trúc-workspace)
-3. [Các lệnh](#các-lệnh)
-4. [Ví dụ thực tế](#ví-dụ-thực-tế)
-5. [Gỡ lỗi thường gặp](#gỡ-lỗi-thường-gặp)
+1. [Cài đặt — Windows](#cài-đặt--windows)
+2. [Cài đặt — Ubuntu/Linux](#cài-đặt--ubuntulinux)
+3. [Cấu trúc workspace](#cấu-trúc-workspace)
+4. [Các lệnh](#các-lệnh)
+5. [Ví dụ thực tế](#ví-dụ-thực-tế)
+6. [Gỡ lỗi thường gặp](#gỡ-lỗi-thường-gặp)
+7. [Tham khảo lệnh](#tham-khảo-lệnh)
 
 ---
 
-## Cài đặt
+## Cài đặt — Windows
 
 ### Bước 1: Build từ source
 
@@ -66,6 +68,78 @@ repo --help
 
 ---
 
+## Cài đặt — Ubuntu/Linux
+
+Có hai cách: **cross-compile từ Windows** hoặc **build thẳng trên Ubuntu**.
+
+### Cách A: Cross-compile từ Windows (yêu cầu Docker Desktop)
+
+**Bước 1:** Build binary Linux từ máy Windows:
+
+```bat
+installer\build-linux.bat
+```
+
+Script sẽ tự cài `cross` (nếu chưa có) và tạo file:
+```
+target\x86_64-unknown-linux-gnu\release\repo
+```
+
+**Bước 2:** Copy file `repo` sang máy Ubuntu, rồi chạy script cài đặt:
+
+```bash
+bash installer/install-ubuntu.sh
+```
+
+### Cách B: Build thẳng trên Ubuntu (yêu cầu Rust)
+
+```bash
+# Cài Rust nếu chưa có
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.cargo/env
+
+# Clone và build
+git clone <repo-url>
+cd git-cli-tool
+cargo build --release
+
+# Cài đặt và thiết lập alias
+bash installer/install-ubuntu.sh
+```
+
+### Kết quả sau khi cài đặt
+
+Script `install-ubuntu.sh` sẽ:
+1. Sao chép binary vào `~/.local/bin/repo`
+2. Tự động thêm `alias repo="$HOME/.local/bin/repo"` vào `~/.bashrc` và `~/.zshrc`
+
+Ví dụ đầu ra:
+
+```
+  repo — Ubuntu installer
+  ─────────────────────────────────────
+   Binary  : target/release/repo
+   Install : /home/ten/.local/bin/repo
+
+✓ Installed /home/ten/.local/bin/repo
+✓ Added alias to /home/ten/.bashrc
+✓ Added alias to /home/ten/.zshrc
+
+  Installation complete!
+  Reload your shell or run:
+    source ~/.bashrc
+  Then: repo --help
+```
+
+**Bước cuối:** Reload shell và kiểm tra:
+
+```bash
+source ~/.bashrc   # hoặc source ~/.zshrc
+repo --help
+```
+
+---
+
 ## Cấu trúc workspace
 
 `repo` quét thư mục hiện tại để tìm các kho git là **con trực tiếp** (depth 1). Workspace nên có cấu trúc như sau:
@@ -109,10 +183,11 @@ Dấu `*` ở cuối dòng nghĩa là kho đó có thay đổi chưa được co
 
 ### `repo checkout <branch>` — Chuyển nhánh
 
-Chuyển sang một nhánh trong các kho được chọn.
+Chuyển sang một nhánh trong các kho được chọn. Thêm `-b` để tạo nhánh mới nếu chưa tồn tại.
 
 ```bash
-repo checkout develop
+repo checkout develop           # chuyển sang nhánh đã có
+repo checkout feature/login -b  # tạo mới và chuyển sang nhánh đó
 ```
 
 Sau khi chạy, giao diện chọn kho xuất hiện (phím cách để chọn/bỏ chọn, Enter để xác nhận):
@@ -199,6 +274,52 @@ nothing to commit, working tree clean
 
 ---
 
+### `repo run <script>` — Chạy script trên nhiều kho
+
+Chạy một script hoặc lệnh trên các kho được chọn. Công cụ tự động nhận diện loại dự án từ file manifest và ánh xạ tên script sang lệnh thực tế.
+
+```bash
+repo run build
+repo run test
+repo run build --jobs 4    # chạy tối đa 4 kho song song
+repo run build --jobs 0    # tự động: số CPU / 2
+```
+
+**Tự động nhận diện build tool:**
+
+| File manifest | Build tool | `build` → | `test` → |
+|---|---|---|---|
+| `package.json` | npm | `npm run build` | `npm test` |
+| `Cargo.toml` | cargo | `cargo build --release` | `cargo test` |
+| `go.mod` | Go | `go build ./...` | `go test ./...` |
+| `Makefile` | make | `make build` | `make test` |
+| *(không có)* | shell | chạy trực tiếp | — |
+
+**Tùy chọn `--jobs` (`-j`):**
+- `--jobs 1` *(mặc định)* — chạy tuần tự, an toàn
+- `--jobs 0` — tự động: `max(1, số_CPU / 2)`
+- `--jobs N` — giới hạn tối đa N kho chạy cùng lúc
+
+Ví dụ đầu ra:
+
+```
+  Running build on 3 repo(s) with 2 job(s)...
+
+[api-service] > cargo build --release
+[api-service]    Compiling api-service v0.1.0
+[api-service]    Finished `release` profile
+[frontend] > npm run build
+[frontend] > vite build ...
+[frontend]   dist/index.html  2.10 kB
+[worker] > go build ./...
+
+  3 of 3 completed successfully.
+```
+
+Khi một kho thất bại, lỗi được in màu đỏ kèm prefix `[tên-kho]` và các kho còn lại vẫn tiếp tục chạy.
+
+---
+
 ### `repo status` — Xem trạng thái
 
 Chạy `git status` trên các kho được chọn.
@@ -251,6 +372,19 @@ repo commit -m "feat: add user role validation"
 
 # Đẩy lên remote
 repo push
+```
+
+### Kịch bản: Build tất cả service sau khi pull
+
+```bash
+# Pull code mới
+repo pull
+
+# Build song song tối đa 4 kho cùng lúc
+repo run build --jobs 4
+
+# Chạy test trên tất cả kho
+repo run test --jobs 0
 ```
 
 ### Kịch bản: Kiểm tra kho nào có thay đổi chưa commit
@@ -326,3 +460,23 @@ workspace/        ← chạy repo từ đây
 ### Lỗi màu đỏ khi pull/push nhưng các kho khác vẫn chạy bình thường
 
 Đây là hành vi mặc định: khi một kho thất bại, công cụ in lỗi màu đỏ và tiếp tục xử lý các kho còn lại. Bạn không cần lo lắng — hãy đọc thông báo lỗi để hiểu nguyên nhân (thường là xung đột, không có remote, hoặc chưa có quyền push).
+
+---
+
+### `repo run` không nhận diện đúng build tool
+
+Kiểm tra xem file manifest có tồn tại ngay trong thư mục gốc của kho không (không phải thư mục con). Thứ tự ưu tiên: `package.json` > `Cargo.toml` > `go.mod` > `Makefile`. Nếu kho có nhiều loại manifest, loại được phát hiện đầu tiên sẽ được dùng.
+
+---
+
+## Tham khảo lệnh
+
+| Lệnh | Mô tả |
+|------|-------|
+| `repo list` | Hiển thị tất cả kho với nhánh và commit gần nhất |
+| `repo checkout <branch> [-b]` | Chuyển nhánh; `-b` để tạo mới nếu chưa tồn tại |
+| `repo pull` | Pull từ remote trên các kho được chọn |
+| `repo push` | Push lên remote trên các kho được chọn |
+| `repo commit -m "<msg>"` | Stage tất cả + commit trên các kho được chọn |
+| `repo status` | Xem trạng thái git chi tiết của các kho được chọn |
+| `repo run <script> [--jobs N]` | Chạy script với tự động nhận diện build tool |

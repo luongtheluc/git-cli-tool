@@ -237,11 +237,12 @@ pub struct Cli {
 
 pub enum Commands {
     List,
-    Checkout { branch: String },
+    Checkout { branch: String, #[arg(short='b')] create: bool },
     Pull,
     Push,
     Commit { #[arg(short, long)] message: String },
     Status,
+    Run { script: String, #[arg(short, long, default_value_t = 1)] jobs: usize },
 }
 ```
 
@@ -336,7 +337,7 @@ Command::new("git")
 | `get_branch()` | `["rev-parse", "--abbrev-ref", "HEAD"]` | "main" | "?" |
 | `get_last_commit()` | `["log", "-1", "--format=%h\t%s"]` | ("a12bc3", "msg") | ("???????", "no commits") |
 | `has_changes()` | `["status", "--porcelain"]` | bool | false |
-| `checkout(branch)` | `["checkout", branch]` | success msg | error |
+| `checkout(branch, create)` | `["checkout", branch]` or `["checkout", "-b", branch]` | success msg | error |
 | `pull()` | `["pull"]` | pull output | error |
 | `push()` | `["push"]` | push output | error |
 | `commit(msg)` | `["add", "-A"]` then `["commit", "-m", msg]` | commit output | error |

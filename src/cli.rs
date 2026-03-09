@@ -15,8 +15,12 @@ pub enum Commands {
 
     /// Checkout a branch in selected repositories
     Checkout {
-        /// Branch name to checkout
+        /// Branch name to checkout (or create with -b)
         branch: String,
+
+        /// Create the branch if it doesn't exist (git checkout -b)
+        #[arg(short = 'b', long)]
+        create: bool,
     },
 
     /// Pull latest changes in selected repositories
@@ -34,4 +38,14 @@ pub enum Commands {
 
     /// Show git status in selected repositories
     Status,
+
+    /// Run a named script in selected repositories (auto-detects build tool)
+    Run {
+        /// Script name to run: e.g. "build", "test", or a shell command
+        script: String,
+
+        /// Max repos running concurrently (0 = auto = cpu_count/2, 1 = sequential)
+        #[arg(short, long, default_value_t = 1)]
+        jobs: usize,
+    },
 }

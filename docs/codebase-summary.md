@@ -35,7 +35,7 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 
 **Key Components:**
 - `Cli` struct — clap Parser; contains `command: Commands` enum
-- `Commands` enum — Subcommand variants: List, Checkout, Pull, Push, Commit, Status
+- `Commands` enum — Subcommand variants: List, Checkout, Pull, Push, Commit, Status, Run
 
 **Responsibilities:**
 - Define CLI argument schema via clap derive macros
@@ -46,11 +46,12 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 
 **Variants:**
 - `List` — no args
-- `Checkout { branch: String }` — positional branch name
+- `Checkout { branch: String, #[arg(short='b')] create: bool }` — positional branch name; `-b` to create
 - `Pull` — no args
 - `Push` — no args
 - `Commit { #[arg(short, long)] message: String }` — `-m` or `--message` flag
 - `Status` — no args
+- `Run { script: String, #[arg(short, long)] jobs: usize }` — script name; `--jobs` concurrency limit
 
 ### repo_scanner.rs (129 LOC)
 **Purpose:** Discover Git repositories in workspace, collect metadata in parallel
@@ -82,8 +83,9 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 
 **Key Components:**
 - `run_git(repo_path, args) -> Result<String>` — Core wrapper; uses `git -C <path>`
-- Helper functions: `get_branch()`, `get_last_commit()`, `has_changes()`, `checkout()`, `pull()`, `push()`, `commit()`, `status()`
-- **5 unit tests** covering branch, commit, changes detection, commits
+- Helper functions: `get_branch()`, `get_last_commit()`, `has_changes()`, `checkout(branch, create)`, `pull()`, `push()`, `commit()`, `status_files()`
+- `BuildTool` enum + `detect_build_tool()`, `resolve_script()`, `run_shell()` — for `repo run`
+- **9 unit tests** covering branch, commit, changes detection, commits, shell execution
 
 **Responsibilities:**
 - Invoke system Git via std::process::Command with `git -C` (avoid chdir)
@@ -161,12 +163,16 @@ Command::new("git")
 - `test_repos_sorted_alphabetically` — 3 repos sorted by name
 - `test_non_git_dirs_excluded` — non-.git dirs filtered out
 
-### git_runner tests (5)
+### git_runner tests (9)
 - `test_get_branch_returns_current_branch` — branch name matches current
 - `test_get_last_commit_returns_hash_and_message` — commit info parsed correctly
 - `test_has_changes_false_on_clean_repo` — clean repo returns false
 - `test_has_changes_true_after_modification` — dirty repo returns true
 - `test_commit_stages_and_commits` — two-step add + commit succeeds
+- `test_run_shell_success` — echo command exits 0
+- `test_run_shell_failure_exit_code` — exit 1 returns Ok(false)
+- `test_run_shell_bad_command_returns_err_or_false` — unknown command fails gracefully
+- `test_run_shell_runs_in_repo_dir` — pwd/cd succeeds in repo dir
 
 All tests use `tempfile` crate for isolated test repos.
 
@@ -255,7 +261,7 @@ setup.rs (independent binary)
 ## Code Quality Metrics
 
 - **Total Source LOC:** ~570 (excluding tests)
-- **Test LOC:** ~130 (9 unit tests)
+- **Test LOC:** ~190 (13 unit tests)
 - **Cyclomatic Complexity:** Low (no nested loops, simple error handling)
 - **Safe Code:** 100% (no unsafe blocks)
 - **Documentation:** All public functions doc-commented
