@@ -24,6 +24,7 @@
       <li><a href="#commands">Commands</a></li>
       <li><a href="#tutorial">Tutorial</a></li>
       <li><a href="https://github.com/luongtheluc/git-cli-tool" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+      <li><button class="lang-toggle" id="lang-toggle" aria-label="Switch language">VI</button></li>
     </ul>
   </div>
 </nav>
@@ -32,10 +33,10 @@
 <section class="hero">
   <div class="container">
     <h1>&gt; repo</h1>
-    <p class="tagline">Manage multiple Git repositories from a single workspace. Discover, inspect, and batch-operate across repos with an interactive terminal UI.</p>
+    <p class="tagline" data-i18n="hero.tagline">Manage multiple Git repositories from a single workspace. Discover, inspect, and batch-operate across repos with an interactive terminal UI.</p>
     <div class="cta-group">
-      <a href="https://github.com/luongtheluc/git-cli-tool/releases/latest" class="btn btn-primary">Download Latest Release</a>
-      <a href="https://github.com/luongtheluc/git-cli-tool" class="btn btn-secondary">View on GitHub</a>
+      <a href="https://github.com/luongtheluc/git-cli-tool/releases/latest" class="btn btn-primary" data-i18n="hero.download">Download Latest Release</a>
+      <a href="https://github.com/luongtheluc/git-cli-tool" class="btn btn-secondary" data-i18n="hero.github">View on GitHub</a>
     </div>
   </div>
 </section>
@@ -47,33 +48,33 @@
     <div class="features-grid">
       <div class="feature-card fade-in">
         <div class="icon">&#128269;</div>
-        <h3>Auto-Discovery</h3>
-        <p>Automatically finds all Git repositories in your workspace directory. No config files needed.</p>
+        <h3 data-i18n="feat.discovery.title">Auto-Discovery</h3>
+        <p data-i18n="feat.discovery.desc">Automatically finds all Git repositories in your workspace directory. No config files needed.</p>
       </div>
       <div class="feature-card fade-in">
         <div class="icon">&#9000;</div>
-        <h3>Interactive TUI</h3>
-        <p>Multi-select repos with space bar, confirm with enter. Safe, visual batch operations.</p>
+        <h3 data-i18n="feat.tui.title">Interactive TUI</h3>
+        <p data-i18n="feat.tui.desc">Multi-select repos with space bar, confirm with enter. Safe, visual batch operations.</p>
       </div>
       <div class="feature-card fade-in">
         <div class="icon">&#9889;</div>
-        <h3>Parallel Scanning</h3>
-        <p>Scans 50+ repos in under 2 seconds using Rayon parallel processing.</p>
+        <h3 data-i18n="feat.scan.title">Parallel Scanning</h3>
+        <p data-i18n="feat.scan.desc">Scans 50+ repos in under 2 seconds using Rayon parallel processing.</p>
       </div>
       <div class="feature-card fade-in">
         <div class="icon">&#128736;</div>
-        <h3>Batch Operations</h3>
-        <p>Checkout, pull, push, commit, and status across multiple repos in one command.</p>
+        <h3 data-i18n="feat.batch.title">Batch Operations</h3>
+        <p data-i18n="feat.batch.desc">Checkout, pull, push, commit, and status across multiple repos in one command.</p>
       </div>
       <div class="feature-card fade-in">
         <div class="icon">&#128737;</div>
-        <h3>Error Resilience</h3>
-        <p>One repo failure doesn't stop the batch. Per-repo error reporting keeps you informed.</p>
+        <h3 data-i18n="feat.error.title">Error Resilience</h3>
+        <p data-i18n="feat.error.desc">One repo failure doesn't stop the batch. Per-repo error reporting keeps you informed.</p>
       </div>
       <div class="feature-card fade-in">
         <div class="icon">&#127760;</div>
-        <h3>Cross-Platform</h3>
-        <p>Works on Windows, macOS, and Linux. Native binaries with ANSI color output.</p>
+        <h3 data-i18n="feat.cross.title">Cross-Platform</h3>
+        <p data-i18n="feat.cross.desc">Works on Windows, macOS, and Linux. Native binaries with ANSI color output.</p>
       </div>
     </div>
   </div>
@@ -157,18 +158,18 @@
     <div class="fade-in">
       <table class="commands-table">
         <thead>
-          <tr><th>Command</th><th>Description</th></tr>
+          <tr><th data-i18n="cmd.header.cmd">Command</th><th data-i18n="cmd.header.desc">Description</th></tr>
         </thead>
         <tbody>
-          <tr><td>repo list</td><td>List all repos with branch, last commit, dirty state</td></tr>
-          <tr><td>repo checkout &lt;branch&gt;</td><td>Switch branch in selected repos</td></tr>
-          <tr><td>repo pull</td><td>Pull latest changes in selected repos</td></tr>
-          <tr><td>repo push</td><td>Push commits in selected repos</td></tr>
-          <tr><td>repo commit -m &lt;msg&gt;</td><td>Stage all + commit in selected repos</td></tr>
-          <tr><td>repo status</td><td>Show git status in selected repos</td></tr>
-          <tr><td>repo git -- &lt;args&gt;</td><td>Run any git command in selected repos</td></tr>
-          <tr><td>repo run &lt;script&gt;</td><td>Run a build script in selected repos (auto-detects tool)</td></tr>
-          <tr><td>repo ui</td><td>Launch interactive TUI dashboard</td></tr>
+          <tr><td>repo list</td><td data-i18n="cmd.list">List all repos with branch, last commit, dirty state</td></tr>
+          <tr><td>repo checkout &lt;branch&gt;</td><td data-i18n="cmd.checkout">Switch branch in selected repos</td></tr>
+          <tr><td>repo pull</td><td data-i18n="cmd.pull">Pull latest changes in selected repos</td></tr>
+          <tr><td>repo push</td><td data-i18n="cmd.push">Push commits in selected repos</td></tr>
+          <tr><td>repo commit -m &lt;msg&gt;</td><td data-i18n="cmd.commit">Stage all + commit in selected repos</td></tr>
+          <tr><td>repo status</td><td data-i18n="cmd.status">Show git status in selected repos</td></tr>
+          <tr><td>repo git -- &lt;args&gt;</td><td data-i18n="cmd.git">Run any git command in selected repos</td></tr>
+          <tr><td>repo run &lt;script&gt;</td><td data-i18n="cmd.run">Run a build script in selected repos (auto-detects tool)</td></tr>
+          <tr><td>repo ui</td><td data-i18n="cmd.ui">Launch interactive TUI dashboard</td></tr>
         </tbody>
       </table>
     </div>
@@ -183,8 +184,8 @@
     <div class="tutorial-step fade-in">
       <div class="step-number">1</div>
       <div class="step-content">
-        <h3>Set up your workspace</h3>
-        <p>Create a folder and clone your repos into it as direct children:</p>
+        <h3 data-i18n="tut.1.title">Set up your workspace</h3>
+        <p data-i18n="tut.1.desc">Create a folder and clone your repos into it as direct children:</p>
         <div class="terminal">
           <div class="terminal-body"><span class="prompt">$</span> mkdir ~/workspace && cd ~/workspace
 <span class="prompt">$</span> git clone git@github.com:org/api-service.git
@@ -197,8 +198,8 @@
     <div class="tutorial-step fade-in">
       <div class="step-number">2</div>
       <div class="step-content">
-        <h3>List and inspect repos</h3>
-        <p>See all repos at a glance — branch, last commit, and dirty state:</p>
+        <h3 data-i18n="tut.2.title">List and inspect repos</h3>
+        <p data-i18n="tut.2.desc">See all repos at a glance — branch, last commit, and dirty state:</p>
         <div class="terminal">
           <div class="terminal-body"><span class="prompt">$</span> repo list
 
@@ -214,8 +215,8 @@
     <div class="tutorial-step fade-in">
       <div class="step-number">3</div>
       <div class="step-content">
-        <h3>Batch checkout + pull</h3>
-        <p>Switch all repos to <code>develop</code> and pull latest code. Select repos with <kbd>Space</kbd>, confirm with <kbd>Enter</kbd>:</p>
+        <h3 data-i18n="tut.3.title">Batch checkout + pull</h3>
+        <p data-i18n="tut.3.desc">Switch all repos to <code>develop</code> and pull latest code. Select repos with <kbd>Space</kbd>, confirm with <kbd>Enter</kbd>:</p>
         <div class="terminal">
           <div class="terminal-body"><span class="prompt">$</span> repo checkout develop
 <span class="prompt">$</span> repo pull</div>
@@ -226,8 +227,8 @@
     <div class="tutorial-step fade-in">
       <div class="step-number">4</div>
       <div class="step-content">
-        <h3>Commit and push across repos</h3>
-        <p>Stage all changes and commit with a shared message, then push:</p>
+        <h3 data-i18n="tut.4.title">Commit and push across repos</h3>
+        <p data-i18n="tut.4.desc">Stage all changes and commit with a shared message, then push:</p>
         <div class="terminal">
           <div class="terminal-body"><span class="prompt">$</span> repo commit -m "fix: update API response format"
 <span class="prompt">$</span> repo push</div>
@@ -238,8 +239,8 @@
     <div class="tutorial-step fade-in">
       <div class="step-number">5</div>
       <div class="step-content">
-        <h3>Run any git command</h3>
-        <p>Pass arbitrary git commands to all selected repos with <code>repo git</code>:</p>
+        <h3 data-i18n="tut.5.title">Run any git command</h3>
+        <p data-i18n="tut.5.desc">Pass arbitrary git commands to all selected repos with <code>repo git</code>:</p>
         <div class="terminal">
           <div class="terminal-body"><span class="prompt">$</span> repo git -- log --oneline -5
 <span class="prompt">$</span> repo git -- stash
@@ -251,8 +252,8 @@
     <div class="tutorial-step fade-in">
       <div class="step-number">6</div>
       <div class="step-content">
-        <h3>Build and test in parallel</h3>
-        <p>Auto-detects build tool (npm, cargo, go, make) per repo:</p>
+        <h3 data-i18n="tut.6.title">Build and test in parallel</h3>
+        <p data-i18n="tut.6.desc">Auto-detects build tool (npm, cargo, go, make) per repo:</p>
         <div class="terminal">
           <div class="terminal-body"><span class="prompt">$</span> repo run build --jobs 4
 <span class="prompt">$</span> repo run test --jobs 0   <span class="output"># auto: CPU/2 concurrent</span></div>
@@ -263,8 +264,8 @@
     <div class="tutorial-step fade-in">
       <div class="step-number">7</div>
       <div class="step-content">
-        <h3>Launch the interactive TUI</h3>
-        <p>Full-screen dashboard with status viewer and batch operations — lazygit style:</p>
+        <h3 data-i18n="tut.7.title">Launch the interactive TUI</h3>
+        <p data-i18n="tut.7.desc">Full-screen dashboard with status viewer and batch operations — lazygit style:</p>
         <div class="terminal">
           <div class="terminal-body"><span class="prompt">$</span> repo ui
 
@@ -291,6 +292,7 @@
   </div>
 </footer>
 
+<script src="i18n.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

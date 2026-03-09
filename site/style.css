@@ -63,6 +63,14 @@ nav .container {
 .nav-links a { color: var(--text-secondary); font-size: 0.9rem; }
 .nav-links a:hover { color: var(--accent); text-decoration: none; }
 
+.lang-toggle {
+  background: transparent; border: 1px solid var(--accent); color: var(--accent);
+  font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700;
+  padding: 4px 10px; border-radius: 4px; cursor: pointer;
+  transition: all 0.2s; letter-spacing: 1px;
+}
+.lang-toggle:hover { background: var(--accent); color: var(--bg-primary); }
+
 /* === Hero === */
 .hero {
   min-height: 100vh; display: flex; align-items: center;

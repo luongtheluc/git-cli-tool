@@ -38,4 +38,20 @@ document.addEventListener('DOMContentLoaded', () => {
       navLinks.classList.toggle('open');
     });
   }
+
+  // Language toggle (EN ↔ VI)
+  const langBtn = document.getElementById('lang-toggle');
+  if (langBtn) {
+    let currentLang = localStorage.getItem('repo-lang') || 'en';
+    // Apply saved language on load
+    if (currentLang === 'vi') {
+      setLanguage('vi');
+      langBtn.textContent = 'EN';
+    }
+    langBtn.addEventListener('click', () => {
+      currentLang = currentLang === 'en' ? 'vi' : 'en';
+      setLanguage(currentLang);
+      langBtn.textContent = currentLang === 'en' ? 'VI' : 'EN';
+    });
+  }
 });
