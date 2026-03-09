@@ -1,10 +1,10 @@
 # Project Roadmap
 
-## Current Status: v0.1.0 (MVP — Released)
+## Current Status: v0.1.5
 
-**Release Date:** 2026-03-05
-**Status:** Stable, all core features implemented
-**Testing:** 9/9 unit tests passing
+**Release Date:** 2026-03-09
+**Status:** Stable, all core features + custom git commands
+**Testing:** 13/13 unit tests passing
 **Code Quality:** No clippy warnings, fully documented
 
 ## Version Overview
@@ -34,7 +34,8 @@
 - Sequential batch execution only (no parallel flag)
 - No filtering before selection (all repos always listed)
 - No commit history or undo
-- No custom git commands
+- ~~No custom git commands~~ (added in v0.1.5 via `repo git`)
+
 
 **Breaking Changes:** None
 
@@ -116,22 +117,18 @@ repo push --parallel
 4. Document when to use parallel
 
 #### F4: Custom Git Commands
-**Status:** Planned
-**Effort:** 5 hours
+**Status:** Complete (v0.1.5)
+**Effort:** 1 hour
 
-Allow running arbitrary git commands across repos:
+Run arbitrary git commands across repos via `repo git`:
 
 ```bash
-repo run "git log --oneline -5"
-repo run "git branch -a"
-repo run "git stash"
+repo git -- log --oneline -5
+repo git -- stash
+repo git -- diff --stat
 ```
 
-**Implementation:**
-1. Add `Run { command: String }` variant to Commands
-2. Validate command for safety (reject --force, reset, clean)
-3. Execute with git_runner::run_git()
-4. Print output per repo
+**Implementation:** Added `Git { args: Vec<String> }` variant using `trailing_var_arg`. Reuses existing `run_batch()` + `run_git()` — no new infra needed.
 
 #### F5: Commit Hooks
 **Status:** Backlog
@@ -273,8 +270,8 @@ Windows path separators in config files.
 - [ ] Aliases and macros
 - [ ] User preferences
 
-### Phase 4: Scripting (PLANNED)
-- [ ] Custom git commands
+### Phase 4: Scripting (IN PROGRESS)
+- [x] Custom git commands (`repo git -- <args>`, v0.1.5)
 - [ ] Batch operations
 - [ ] Hooks
 

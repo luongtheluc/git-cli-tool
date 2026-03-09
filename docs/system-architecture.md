@@ -268,6 +268,7 @@ pub enum Commands {
     Push,
     Commit { #[arg(short, long)] message: String },
     Status,
+    Git { #[arg(trailing_var_arg)] args: Vec<String> },  // pass-through git args
     Run { script: String, #[arg(short, long, default_value_t = 1)] jobs: usize },
     Ui,  // launches full-screen ratatui TUI
 }

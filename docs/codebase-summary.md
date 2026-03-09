@@ -35,7 +35,7 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 
 **Key Components:**
 - `Cli` struct — clap Parser; contains `command: Commands` enum
-- `Commands` enum — Subcommand variants: List, Checkout, Pull, Push, Commit, Status, Run, Ui
+- `Commands` enum — Subcommand variants: List, Checkout, Pull, Push, Commit, Status, Git, Run, Ui
 
 **Responsibilities:**
 - Define CLI argument schema via clap derive macros
@@ -51,6 +51,7 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 - `Push` — no args
 - `Commit { #[arg(short, long)] message: String }` — `-m` or `--message` flag
 - `Status` — no args
+- `Git { #[arg(trailing_var_arg)] args: Vec<String> }` — pass-through args to git
 - `Run { script: String, #[arg(short, long)] jobs: usize }` — script name; `--jobs` concurrency limit
 - `Ui` — no args; launches interactive TUI
 
