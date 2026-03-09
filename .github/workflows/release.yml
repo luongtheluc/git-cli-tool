@@ -1,8 +1,10 @@
 name: Release
 
-# Triggers on version tags: git tag v0.1.2 && git push origin v0.1.2
+# Triggers on version tags or merge to master
 on:
   push:
+    branches:
+      - master
     tags:
       - 'v*'
 
