@@ -64,7 +64,60 @@ impl StatusEntry {
     }
 }
 
-/// Live progress state for a running batch operation
+/// Live progress state for a running batch or single operation
+#[derive(Clone)]
+pub enum OperationProgress {
+    /// Batch operation with total count and completion tracking
+    Batch {
+        total: usize,
+        completed: usize,
+        op_name: String,
+        #[allow(dead_code)]
+        results: Vec<BatchResult>,
+    },
+    /// Single operation (e.g., refresh status, commit) with name only
+    Single {
+        op_name: String,
+    },
+}
+
+impl OperationProgress {
+    /// Get the operation display name
+    pub fn op_name(&self) -> &str {
+        match self {
+            OperationProgress::Batch { op_name, .. } => op_name,
+            OperationProgress::Single { op_name } => op_name,
+        }
+    }
+
+    /// Get completion percentage (0.0-1.0) for batch ops, 0.0 for single
+    pub fn progress_pct(&self) -> f64 {
+        match self {
+            OperationProgress::Batch {
+                completed, total, ..
+            } => {
+                if *total > 0 {
+                    *completed as f64 / *total as f64
+                } else {
+                    0.0
+                }
+            }
+            OperationProgress::Single { .. } => 0.0, // Indeterminate for single ops
+        }
+    }
+
+    /// Get current progress (x/total) for batch ops, returns None for single
+    pub fn batch_progress(&self) -> Option<(usize, usize)> {
+        match self {
+            OperationProgress::Batch {
+                completed, total, ..
+            } => Some((*completed, *total)),
+            OperationProgress::Single { .. } => None,
+        }
+    }
+}
+
+/// Live progress state for a running batch operation (legacy, kept for reference)
 pub struct BatchProgress {
     pub total: usize,
     pub completed: usize,
@@ -75,6 +128,7 @@ pub struct BatchProgress {
 }
 
 /// Result of a single repo operation within a batch
+#[derive(Clone)]
 pub struct BatchResult {
     pub repo_name: String,
     pub success: bool,
@@ -102,8 +156,8 @@ pub struct App {
     pub input_buffer: String,
     /// What the input text will be used for
     pub input_purpose: InputPurpose,
-    /// Live progress for a running batch operation (None = idle)
-    pub batch_progress: Option<BatchProgress>,
+    /// Live progress for a running batch or single operation (None = idle)
+    pub operation_progress: Option<OperationProgress>,
 }
 
 impl App {
@@ -120,7 +174,7 @@ impl App {
             input_mode: InputMode::Normal,
             input_buffer: String::new(),
             input_purpose: InputPurpose::None,
-            batch_progress: None,
+            operation_progress: None,
         }
     }
 

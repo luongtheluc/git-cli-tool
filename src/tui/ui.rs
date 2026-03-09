@@ -28,6 +28,9 @@ pub fn render(f: &mut Frame, app: &App) {
     render_sidebar(f, app, top[0]);
     render_main(f, app, top[1]);
     render_footer(f, app, outer[1]);
+
+    // Render modal dialog overlay if operation in progress
+    super::modal::render_progress_modal(f, app);
 }
 
 /// Left sidebar: scrollable list of repos with enriched info.
@@ -195,18 +198,21 @@ fn render_main(f: &mut Frame, app: &App, area: Rect) {
 /// Footer: keyboard hints, input field, or progress bar depending on mode.
 fn render_footer(f: &mut Frame, app: &App, area: Rect) {
     // Progress bar takes priority
-    if let Some(ref progress) = app.batch_progress {
-        let pct = if progress.total > 0 {
-            progress.completed as f64 / progress.total as f64
-        } else {
-            0.0
-        };
+    if let Some(ref progress) = app.operation_progress {
+        let pct = progress.progress_pct();
         let filled = (pct * 20.0) as usize;
         let bar = "█".repeat(filled) + &"░".repeat(20 - filled);
-        let text = format!(
-            " {} {}/{} {}",
-            progress.op_name, progress.completed, progress.total, bar
-        );
+        let text = if let Some((completed, total)) = progress.batch_progress() {
+            format!(
+                " {} {}/{} {}",
+                progress.op_name(),
+                completed,
+                total,
+                bar
+            )
+        } else {
+            format!(" {} {}", progress.op_name(), bar)
+        };
         let p = Paragraph::new(text).block(
             Block::default()
                 .borders(Borders::ALL)

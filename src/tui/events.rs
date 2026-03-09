@@ -62,10 +62,12 @@ fn handle_input_mode(app: &mut App, code: KeyCode) {
 
 /// Handle keys in normal navigation mode
 fn handle_normal_mode(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
-    // Block all keys except quit while a batch operation is running
-    if app.batch_progress.is_some() {
-        if code == KeyCode::Char('q') || code == KeyCode::Esc {
-            app.message = Some("Batch operation in progress...".into());
+    // Block all keys except quit/esc while an operation is running
+    if app.operation_progress.is_some() {
+        match code {
+            KeyCode::Char('q') => app.should_quit = true,
+            KeyCode::Esc => app.operation_progress = None, // Allow dismissal
+            _ => {} // Ignore other keys during operation
         }
         return;
     }
@@ -137,7 +139,7 @@ fn start_batch(app: &mut App, op: BatchOp) {
     let rx = super::batch_ops::execute_batch_async(&app.repos, &indices, &op);
 
     // Store progress state — channel is polled in the event loop (mod.rs)
-    app.batch_progress = Some(super::app::BatchProgress {
+    app.operation_progress = Some(super::app::OperationProgress::Batch {
         total,
         completed: 0,
         op_name,
@@ -158,7 +160,10 @@ fn drain_batch_results(
     app: &mut App,
     rx: std::sync::mpsc::Receiver<super::app::BatchResult>,
 ) {
-    let total = app.batch_progress.as_ref().map(|p| p.total).unwrap_or(0);
+    let total = match &app.operation_progress {
+        Some(super::app::OperationProgress::Batch { total, .. }) => *total,
+        _ => 0,
+    };
     let mut results = Vec::new();
 
     for result in rx.iter() {
@@ -175,13 +180,9 @@ fn drain_batch_results(
         .map(|r| format!("{}: {}", r.repo_name, r.message))
         .collect();
 
-    let op_name = app
-        .batch_progress
-        .as_ref()
-        .map(|p| p.op_name.clone())
-        .unwrap_or_default();
+    let op_name = app.operation_progress.as_ref().map(|p| p.op_name().to_string()).unwrap_or_default();
 
-    app.batch_progress = None;
+    app.operation_progress = None;
 
     if failed.is_empty() {
         app.message = Some(format!("{} — {}/{} succeeded", op_name, success, total));

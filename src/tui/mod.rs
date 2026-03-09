@@ -2,6 +2,7 @@ pub mod app;
 pub mod batch_ops;
 pub mod events;
 pub mod ui;
+pub mod modal;
 
 use anyhow::Result;
 use crossterm::{
