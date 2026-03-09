@@ -95,7 +95,7 @@ nav .container {
 .hero-terminal .terminal { text-align: left; }
 
 .hero-terminal .terminal-body {
-  min-height: 180px; font-size: 0.85rem; line-height: 1.7;
+  height: 220px; overflow: hidden; font-size: 0.85rem; line-height: 1.7;
 }
 
 .terminal-title {
