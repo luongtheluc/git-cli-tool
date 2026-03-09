@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>repo — Polyrepo Manager</title>
+  <meta name="description" content="Manage multiple Git repositories from a workspace folder. Interactive TUI, parallel scanning, batch operations.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<a href="#features" class="skip-link">Skip to content</a>
+
+<!-- Navigation -->
+<nav>
+  <div class="container">
+    <a href="#" class="nav-logo">&gt; repo</a>
+    <button class="nav-toggle" aria-label="Toggle navigation">&#9776;</button>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#demo">Demo</a></li>
+      <li><a href="#install">Install</a></li>
+      <li><a href="#commands">Commands</a></li>
+      <li><a href="https://github.com/luongtheluc/git-cli-tool" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <h1>&gt; repo</h1>
+    <p class="tagline">Manage multiple Git repositories from a single workspace. Discover, inspect, and batch-operate across repos with an interactive terminal UI.</p>
+    <div class="cta-group">
+      <a href="https://github.com/luongtheluc/git-cli-tool/releases/latest" class="btn btn-primary">Download Latest Release</a>
+      <a href="https://github.com/luongtheluc/git-cli-tool" class="btn btn-secondary">View on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section id="features">
+  <div class="container">
+    <h2 class="section-title">// features</h2>
+    <div class="features-grid">
+      <div class="feature-card fade-in">
+        <div class="icon">&#128269;</div>
+        <h3>Auto-Discovery</h3>
+        <p>Automatically finds all Git repositories in your workspace directory. No config files needed.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="icon">&#9000;</div>
+        <h3>Interactive TUI</h3>
+        <p>Multi-select repos with space bar, confirm with enter. Safe, visual batch operations.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="icon">&#9889;</div>
+        <h3>Parallel Scanning</h3>
+        <p>Scans 50+ repos in under 2 seconds using Rayon parallel processing.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="icon">&#128736;</div>
+        <h3>Batch Operations</h3>
+        <p>Checkout, pull, push, commit, and status across multiple repos in one command.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="icon">&#128737;</div>
+        <h3>Error Resilience</h3>
+        <p>One repo failure doesn't stop the batch. Per-repo error reporting keeps you informed.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="icon">&#127760;</div>
+        <h3>Cross-Platform</h3>
+        <p>Works on Windows, macOS, and Linux. Native binaries with ANSI color output.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Demo -->
+<section id="demo" class="bg-alt">
+  <div class="container">
+    <h2 class="section-title">// demo</h2>
+    <div class="terminal fade-in">
+      <div class="terminal-header">
+        <span class="terminal-dot red"></span>
+        <span class="terminal-dot yellow"></span>
+        <span class="terminal-dot green"></span>
+      </div>
+      <div class="terminal-body"><span class="prompt">$ repo list</span>
+
+<span class="output">REPO              BRANCH        LAST COMMIT</span>
+<span class="output">──────────────────────────────────────────────────────────────</span>
+<span class="output">api-service       </span><span class="highlight">develop</span><span class="output">       a12bc3 fix auth bug</span>
+<span class="output">auth-service      </span><span class="highlight">main</span><span class="output">          7a91de update deps          </span><span class="dirty">*</span>
+<span class="output">frontend          </span><span class="highlight">feature/ui</span><span class="output">    0ab221 add layout</span>
+<span class="output">worker            </span><span class="highlight">develop</span><span class="output">       c2f991 fix queue</span>
+
+<span class="prompt">$ repo checkout develop</span>
+
+<span class="output">Select repositories (space to toggle, enter to confirm):</span>
+<span class="output">&gt; [x] api-service      develop      a12bc3 fix auth bug</span>
+<span class="output">  [x] auth-service     main         7a91de update deps</span>
+<span class="output">  [ ] frontend         feature/ui   0ab221 add layout</span>
+<span class="output">  [x] worker           develop      c2f991 fix queue</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- Installation -->
+<section id="install">
+  <div class="container">
+    <h2 class="section-title">// install</h2>
+    <div class="install-tabs fade-in">
+      <div class="tab-buttons" role="tablist">
+        <button class="tab-btn active" data-tab="tab-cargo" role="tab" aria-selected="true" aria-controls="tab-cargo">cargo install</button>
+        <button class="tab-btn" data-tab="tab-setup" role="tab" aria-selected="false" aria-controls="tab-setup">setup binary</button>
+        <button class="tab-btn" data-tab="tab-manual" role="tab" aria-selected="false" aria-controls="tab-manual">manual</button>
+      </div>
+      <div class="tab-content active" id="tab-cargo" role="tabpanel">
+        <div class="terminal">
+          <div class="terminal-body"><span class="prompt">$</span> cargo install --path .
+<span class="prompt">$</span> repo --help</div>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-setup" role="tabpanel">
+        <div class="terminal">
+          <div class="terminal-body"><span class="output"># Windows</span>
+<span class="prompt">$</span> ./target/release/setup.exe
+
+<span class="output"># macOS / Linux</span>
+<span class="prompt">$</span> ./target/release/setup
+
+<span class="output"># Then restart terminal</span>
+<span class="prompt">$</span> repo --help</div>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-manual" role="tabpanel">
+        <div class="terminal">
+          <div class="terminal-body"><span class="output"># Windows PowerShell</span>
+<span class="prompt">$</span> Copy-Item target\release\repo.exe $env:USERPROFILE\.cargo\bin\
+
+<span class="output"># macOS / Linux</span>
+<span class="prompt">$</span> cp target/release/repo ~/.cargo/bin/</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Commands -->
+<section id="commands" class="bg-alt">
+  <div class="container">
+    <h2 class="section-title">// commands</h2>
+    <div class="fade-in">
+      <table class="commands-table">
+        <thead>
+          <tr><th>Command</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>repo list</td><td>List all repos with branch, last commit, dirty state</td></tr>
+          <tr><td>repo checkout &lt;branch&gt;</td><td>Switch branch in selected repos</td></tr>
+          <tr><td>repo pull</td><td>Pull latest changes in selected repos</td></tr>
+          <tr><td>repo push</td><td>Push commits in selected repos</td></tr>
+          <tr><td>repo commit -m &lt;msg&gt;</td><td>Stage all + commit in selected repos</td></tr>
+          <tr><td>repo status</td><td>Show git status in selected repos</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <p>
+      <a href="https://github.com/luongtheluc/git-cli-tool">GitHub</a> &middot;
+      MIT License &middot;
+      Built with Rust
+    </p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

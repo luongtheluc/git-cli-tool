@@ -1,0 +1,231 @@
+/* === Reset & Base === */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #12122a;
+  --bg-card: #1a1a3e;
+  --bg-terminal: #0d0d1f;
+  --text-primary: #e0e0f0;
+  --text-secondary: #8888aa;
+  --accent: #00d4aa;
+  --accent-dim: #00a88440;
+  --border: #2a2a4e;
+  --font-mono: 'Courier New', Consolas, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* === Layout === */
+.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+/* === Navigation === */
+/* === Skip Link === */
+.skip-link {
+  position: absolute; top: -40px; left: 0; padding: 8px 16px;
+  background: var(--accent); color: var(--bg-primary); z-index: 200;
+}
+.skip-link:focus { top: 0; }
+
+nav {
+  position: fixed; top: 0; width: 100%; z-index: 100;
+  background: var(--bg-primary); border-bottom: 1px solid var(--border);
+}
+
+nav .container {
+  display: flex; justify-content: space-between; align-items: center;
+  height: 60px;
+}
+
+.nav-logo {
+  font-family: var(--font-mono); font-size: 1.25rem;
+  font-weight: 700; color: var(--accent);
+}
+
+.nav-toggle {
+  display: none; background: transparent; border: 1px solid var(--border);
+  color: var(--text-primary); font-size: 1.4rem; padding: 4px 10px;
+  border-radius: 4px; cursor: pointer;
+}
+
+.nav-links { display: flex; gap: 24px; list-style: none; }
+.nav-links a { color: var(--text-secondary); font-size: 0.9rem; }
+.nav-links a:hover { color: var(--accent); text-decoration: none; }
+
+/* === Hero === */
+.hero {
+  min-height: 100vh; display: flex; align-items: center;
+  padding-top: 60px; text-align: center;
+}
+
+.hero h1 {
+  font-family: var(--font-mono); font-size: clamp(2.5rem, 6vw, 4rem);
+  color: var(--accent); margin-bottom: 16px;
+}
+
+.hero .tagline {
+  font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+  color: var(--text-secondary); max-width: 600px; margin: 0 auto 32px;
+}
+
+.cta-group { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 28px; border-radius: 6px; font-size: 1rem;
+  font-weight: 600; transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--accent); color: var(--bg-primary);
+}
+.btn-primary:hover { background: #00eabb; text-decoration: none; }
+
+.btn-secondary {
+  border: 1px solid var(--border); color: var(--text-primary);
+  background: transparent;
+}
+.btn-secondary:hover { border-color: var(--accent); text-decoration: none; }
+
+/* === Sections === */
+section { padding: 80px 0; }
+.bg-alt { background: var(--bg-secondary); }
+
+.section-title {
+  font-family: var(--font-mono); font-size: 1.8rem;
+  color: var(--accent); margin-bottom: 40px; text-align: center;
+}
+
+/* === Features Grid === */
+.features-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.feature-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 28px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.feature-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+.feature-card .icon { font-size: 2rem; margin-bottom: 12px; }
+
+.feature-card h3 {
+  font-family: var(--font-mono); font-size: 1.1rem;
+  margin-bottom: 8px; color: var(--text-primary);
+}
+
+.feature-card p { color: var(--text-secondary); font-size: 0.95rem; }
+
+/* === Terminal Block === */
+.terminal {
+  background: var(--bg-terminal); border: 1px solid var(--border);
+  border-radius: 8px; max-width: 750px; margin: 0 auto;
+  overflow: hidden;
+}
+
+.terminal-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px; background: var(--bg-card); border-bottom: 1px solid var(--border);
+}
+
+.terminal-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+}
+.terminal-dot.red { background: #ff5f57; }
+.terminal-dot.yellow { background: #ffbd2e; }
+.terminal-dot.green { background: #28c840; }
+
+.terminal-body {
+  padding: 20px; font-family: var(--font-mono); font-size: 0.9rem;
+  line-height: 1.8; overflow-x: auto; white-space: pre;
+}
+
+.terminal-body .prompt { color: var(--accent); }
+.terminal-body .output { color: var(--text-secondary); }
+.terminal-body .highlight { color: #f0c040; }
+.terminal-body .dirty { color: #ff6b6b; }
+
+/* === Install Tabs === */
+.install-tabs { max-width: 700px; margin: 0 auto; }
+
+.tab-buttons {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+
+.tab-btn {
+  padding: 10px 20px; background: transparent; border: none;
+  color: var(--text-secondary); font-family: var(--font-mono);
+  font-size: 0.9rem; cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+.tab-btn:hover { color: var(--text-primary); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.tab-content .terminal { border-radius: 0 0 8px 8px; }
+
+/* === Commands Table === */
+.commands-table {
+  width: 100%; max-width: 700px; margin: 0 auto;
+  border-collapse: collapse; font-family: var(--font-mono); font-size: 0.9rem;
+}
+
+.commands-table th {
+  text-align: left; padding: 12px 16px;
+  border-bottom: 2px solid var(--accent); color: var(--accent);
+}
+
+.commands-table td {
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+}
+
+.commands-table td:first-child { color: var(--accent); white-space: nowrap; }
+.commands-table td:last-child { color: var(--text-secondary); }
+
+/* === Footer === */
+footer {
+  padding: 40px 0; border-top: 1px solid var(--border);
+  text-align: center; color: var(--text-secondary); font-size: 0.85rem;
+}
+
+footer a { color: var(--accent); }
+
+/* === Fade-in Animation === */
+.fade-in {
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.fade-in.visible { opacity: 1; transform: translateY(0); }
+
+/* === Responsive === */
+@media (max-width: 768px) {
+  .nav-toggle { display: block; }
+  .nav-links {
+    display: none; flex-direction: column; gap: 0;
+    position: absolute; top: 60px; left: 0; width: 100%;
+    background: var(--bg-primary); border-bottom: 1px solid var(--border);
+  }
+  .nav-links.open { display: flex; }
+  .nav-links li a { display: block; padding: 12px 24px; }
+  section { padding: 60px 0; }
+  .features-grid { grid-template-columns: 1fr; }
+  .terminal-body { font-size: 0.8rem; }
+  .commands-table { font-size: 0.8rem; }
+  .commands-table td, .commands-table th { padding: 8px 12px; }
+}
