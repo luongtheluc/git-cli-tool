@@ -80,6 +80,32 @@ pub fn push(repo_path: &Path) -> Result<String> {
     run_git(repo_path, &["push"])
 }
 
+/// Get the latest tag reachable from HEAD (e.g. "v1.0.0")
+/// Returns "—" if no tags exist in the repository.
+pub fn get_latest_tag(repo_path: &Path) -> String {
+    run_git(repo_path, &["describe", "--tags", "--abbrev=0"])
+        .unwrap_or_else(|_| "—".to_string())
+}
+
+/// Get relative time of last commit (e.g. "2 hours ago", "3 days ago")
+/// Returns "—" if the repo has no commits.
+pub fn get_last_commit_time(repo_path: &Path) -> String {
+    run_git(repo_path, &["log", "-1", "--format=%cr"])
+        .unwrap_or_else(|_| "—".to_string())
+}
+
+/// Count changed files in working tree (staged + unstaged + untracked)
+pub fn changed_file_count(repo_path: &Path) -> usize {
+    run_git(repo_path, &["status", "--porcelain"])
+        .map(|s| s.lines().filter(|l| l.len() >= 3).count())
+        .unwrap_or(0)
+}
+
+/// Fetch from all remotes
+pub fn fetch(repo_path: &Path) -> Result<String> {
+    run_git(repo_path, &["fetch", "--all"])
+}
+
 /// Stage all changes (git add -A) then commit with the given message
 pub fn commit(repo_path: &Path, message: &str) -> Result<String> {
     run_git(repo_path, &["add", "-A"])?;

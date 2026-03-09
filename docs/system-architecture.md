@@ -72,10 +72,16 @@ repo is a single-process, interactive CLI application with three distinct phases
 main.rs (entry point, orchestration)
 ├── cli.rs (argument parsing)
 ├── repo_scanner.rs (discovery)
-│   └── git_runner.rs (system git)
+│   └── git_runner.rs (system git + enhanced metadata)
 ├── ui.rs (presentation)
 │   └── repo_scanner.rs (RepoInfo type)
-└── git_runner.rs (git operations)
+├── git_runner.rs (git operations)
+└── tui/ (interactive full-screen dashboard)
+    ├── app.rs (state machine)
+    ├── ui.rs (render sidebar + status)
+    ├── events.rs (keyboard input dispatch)
+    ├── batch_ops.rs (BatchOp enum + async executor)
+    └── git_runner.rs (batch operations)
 
 setup.rs (installer, independent binary)
 ├── std::env
@@ -84,7 +90,7 @@ setup.rs (installer, independent binary)
 └── winreg (Windows-only)
 ```
 
-**Key:** No circular dependencies. Data flows through RepoInfo struct only.
+**Key:** No circular dependencies. Data flows through RepoInfo struct. TUI runs as separate mode with its own event loop.
 
 ### Module Responsibilities
 
@@ -125,6 +131,20 @@ setup.rs (installer, independent binary)
 - **Responsibility:** Orchestrate discovery→selection→execution; error handling
 - **Size:** 87 LOC
 - **Key Function:** `run_batch<F>(repos, selected, operation)` — generic batch executor
+
+#### tui/ (5 modules)
+- **Input:** `Vec<RepoInfo>` from scanner
+- **Output:** Full-screen terminal UI with batch operations
+- **Responsibility:** Lazygit-style TUI — enriched sidebar (checkbox, tag, time), status panel, batch operations, keyboard navigation
+- **Size:** ~450 LOC across 5 files
+- **Dependencies:** ratatui 0.26, crossterm 0.27, tokio (async), git_runner
+- **Key Design:**
+  - Alternate screen + raw mode; 100 ms poll loop; panic hook guarantees terminal restore
+  - Multi-select checkboxes (Space/a to toggle all)
+  - Sidebar enriched: checkbox, dirty file count, branch w/ ahead/behind, tag, relative commit time
+  - Batch operations (p=Pull, P=Push, f=Fetch, c=Commit, b=Branch) execute async in thread
+  - Input mode for text entry (branch name, commit message)
+  - Live progress feedback (✓ on success, ✗ on error)
 
 #### setup.rs
 - **Input:** Environment (PATH, USERPROFILE/HOME)
@@ -215,15 +235,21 @@ for each index in Vec<usize>:
 
 ## Data Structures
 
-### RepoInfo Struct
+### RepoInfo Struct (expanded for TUI Dashboard)
 ```rust
 pub struct RepoInfo {
+    // Base fields
     pub name: String,                    // "api-service"
     pub path: PathBuf,                   // /workspace/api-service
     pub branch: String,                  // "develop" or "?"
     pub last_commit_hash: String,        // "a12bc3" (7-char short hash)
     pub last_commit_msg: String,         // "fix auth bug"
     pub has_uncommitted_changes: bool,   // true if git status --porcelain not empty
+
+    // TUI Dashboard fields (new)
+    pub latest_tag: String,              // "v1.2.3" or "" (fallback)
+    pub last_commit_time: SystemTime,    // Timestamp for relative display
+    pub changed_file_count: usize,       // Count of unstaged/untracked files
 }
 ```
 
@@ -243,10 +269,24 @@ pub enum Commands {
     Commit { #[arg(short, long)] message: String },
     Status,
     Run { script: String, #[arg(short, long, default_value_t = 1)] jobs: usize },
+    Ui,  // launches full-screen ratatui TUI
 }
 ```
 
 **Lifetime:** Scope of main(); parsed once.
+
+### BatchOp Enum (TUI Dashboard)
+```rust
+pub enum BatchOp {
+    Pull,
+    Push,
+    Fetch,
+    Commit(String),                      // Message provided via input mode
+    Checkout(String),                    // Branch name provided via input
+}
+```
+
+**Execution:** Async in tokio thread; UI notified of completion (✓ or ✗).
 
 ## Control Flow — Example: `repo pull`
 
@@ -360,6 +400,55 @@ Command::new("git")
 1. **Network latency** (pull/push) — dominant cost
 2. **Disk I/O** (WalkDir traversal) — secondary
 3. **Parallel metadata collection** — hidden by above
+
+## TUI Dashboard Architecture
+
+### Overview
+The `repo ui` command launches an interactive full-screen dashboard with three core features:
+
+1. **Enriched Sidebar** — Multi-select repo list with metadata badges (tag, commit time, changed file count)
+2. **Status Panel** — Detailed git status porcelain display with color-coded staging
+3. **Batch Operations** — Execute operations (Pull, Push, Fetch, Commit, Checkout) on selected repos async
+
+### Input Modes
+- **Normal Mode:** Navigation (↑↓/jk), select toggle (Space/a), batch op keys (p/P/f/c/b), quit (q)
+- **Input Mode:** Text entry for branch names or commit messages with prompt overlay
+
+### Batch Operations Execution
+```
+User presses 'p' (pull)
+    │
+    ▼
+Event captured in events.rs
+    │
+    ▼
+batch_ops::execute() spawned in tokio thread
+    │
+    ├─ for each selected repo:
+    │   ├─ Call git_runner::pull()
+    │   ├─ Mark ✓ on success
+    │   └─ Mark ✗ on error
+    │
+    ▼
+UI re-renders live with progress feedback
+    │
+    ▼
+User sees operation status without blocking
+```
+
+### Sidebar Enrichment (New Fields)
+Each repo row displays:
+```
+[X] repo-name                 # checkbox + name
+    branch-name (+2/-1)       # branch with ahead/behind
+    latest-tag                # tag badge
+    2m ago, 3 files changed   # relative time + changed count
+```
+
+### Error Handling
+- **Batch op errors:** Logged per-repo, marked ✗, continue to next
+- **Input validation:** Simple bounds checking; git handles invalid branch/message
+- **Terminal restore:** Panic hook guarantees shell safety even on crash
 
 ## Security Considerations
 

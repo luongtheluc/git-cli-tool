@@ -158,6 +158,43 @@ Chạy `repo` từ thư mục `workspace/`. Các kho lồng sâu hơn sẽ khôn
 
 ## Các lệnh
 
+### `repo ui` — Giao diện TUI tương tác
+
+Khởi chạy giao diện terminal đầy đủ màn hình theo phong cách lazygit — duyệt kho và xem trạng thái git mà không cần gõ lệnh.
+
+```bash
+repo ui
+```
+
+**Bố cục màn hình:**
+
+```
+┌─ REPOS ──────────────┐┌─ api-service [main] ─────────────────────┐
+│▶ ● api-service  main ││   M  modified  src/main.rs               │
+│  ● frontend     dev  ││  ??  untracked config/local.toml         │
+│    worker       main ││   A  added     tests/integration_test.rs │
+└──────────────────────┘└──────────────────────────────────────────┘
+│ ↑↓ Navigate   r Refresh  Tab Focus   q Quit  │  3 changed file(s)│
+```
+
+**Màu sắc trạng thái (giống lazygit):**
+- Xanh lá `green` — file đã staged (chờ commit)
+- Vàng `yellow` — file đã sửa nhưng chưa staged
+- Đỏ `red` — file chưa được track (untracked)
+- Vàng nhạt `●` — kho có thay đổi chưa commit
+
+**Phím tắt:**
+
+| Phím | Chức năng |
+|------|-----------|
+| `↑` / `↓` hoặc `j` / `k` | Di chuyển lên/xuống danh sách kho |
+| `r` hoặc `F5` | Làm mới trạng thái kho đang chọn |
+| `Tab` | Chuyển focus giữa sidebar và panel chính |
+| `q` hoặc `Esc` | Thoát TUI |
+| `Ctrl+C` | Thoát khẩn cấp |
+
+---
+
 ### `repo list` — Xem danh sách kho
 
 Hiển thị tất cả kho được phát hiện cùng với nhánh hiện tại và commit gần nhất.
@@ -473,6 +510,7 @@ Kiểm tra xem file manifest có tồn tại ngay trong thư mục gốc của k
 
 | Lệnh | Mô tả |
 |------|-------|
+| `repo ui` | Giao diện TUI tương tác (lazygit-style) |
 | `repo list` | Hiển thị tất cả kho với nhánh và commit gần nhất |
 | `repo checkout <branch> [-b]` | Chuyển nhánh; `-b` để tạo mới nếu chưa tồn tại |
 | `repo pull` | Pull từ remote trên các kho được chọn |

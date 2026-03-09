@@ -39,6 +39,9 @@ pub enum Commands {
     /// Show git status in selected repositories
     Status,
 
+    /// Launch the interactive TUI (lazygit-like interface)
+    Ui,
+
     /// Run a named script in selected repositories (auto-detects build tool)
     Run {
         /// Script name to run: e.g. "build", "test", or a shell command

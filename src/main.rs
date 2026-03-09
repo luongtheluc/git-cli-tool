@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 mod cli;
 mod git_runner;
 mod repo_scanner;
+mod tui;
 mod ui;
 
 use cli::{Cli, Commands};
@@ -121,6 +122,15 @@ fn main() -> Result<()> {
                         .yellow()
                         .bold()
                 );
+            }
+        }
+
+        Commands::Ui => {
+            let repos = repo_scanner::scan_repos(&cwd)?;
+            if repos.is_empty() {
+                println!("{}", "  No repositories found in current directory.".dimmed());
+            } else {
+                tui::run_tui(repos)?;
             }
         }
 

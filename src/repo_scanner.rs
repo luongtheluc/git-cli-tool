@@ -18,6 +18,12 @@ pub struct RepoInfo {
     pub ahead: u32,
     /// Commits local branch is behind its remote tracking branch (0 if no remote)
     pub behind: u32,
+    /// Latest reachable tag (e.g. "v1.0.0") or "—" if none
+    pub latest_tag: String,
+    /// Relative time of last commit (e.g. "2 hours ago")
+    pub last_commit_time: String,
+    /// Number of changed files (staged + unstaged + untracked)
+    pub changed_file_count: usize,
 }
 
 /// Scan `workspace_dir` for direct-child git repos, collecting metadata in parallel.
@@ -66,6 +72,13 @@ fn build_repo_info(path: PathBuf) -> Result<RepoInfo> {
         .unwrap_or_else(|_| ("???????".to_string(), "no commits".to_string()));
     let has_uncommitted_changes = git_runner::has_changes(&path).unwrap_or(false);
     let (ahead, behind) = git_runner::get_ahead_behind(&path).unwrap_or((0, 0));
+    let latest_tag = git_runner::get_latest_tag(&path);
+    let last_commit_time = git_runner::get_last_commit_time(&path);
+    let changed_file_count = if has_uncommitted_changes {
+        git_runner::changed_file_count(&path)
+    } else {
+        0
+    };
 
     Ok(RepoInfo {
         name,
@@ -76,6 +89,9 @@ fn build_repo_info(path: PathBuf) -> Result<RepoInfo> {
         has_uncommitted_changes,
         ahead,
         behind,
+        latest_tag,
+        last_commit_time,
+        changed_file_count,
     })
 }
 

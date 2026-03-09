@@ -35,7 +35,7 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 
 **Key Components:**
 - `Cli` struct — clap Parser; contains `command: Commands` enum
-- `Commands` enum — Subcommand variants: List, Checkout, Pull, Push, Commit, Status, Run
+- `Commands` enum — Subcommand variants: List, Checkout, Pull, Push, Commit, Status, Run, Ui
 
 **Responsibilities:**
 - Define CLI argument schema via clap derive macros
@@ -52,16 +52,23 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 - `Commit { #[arg(short, long)] message: String }` — `-m` or `--message` flag
 - `Status` — no args
 - `Run { script: String, #[arg(short, long)] jobs: usize }` — script name; `--jobs` concurrency limit
+- `Ui` — no args; launches interactive TUI
 
-### repo_scanner.rs (129 LOC)
+### repo_scanner.rs (155 LOC)
 **Purpose:** Discover Git repositories in workspace, collect metadata in parallel
 
 **Key Components:**
-- `RepoInfo` struct — name, path, branch, commit hash/msg, dirty flag
+- `RepoInfo` struct — name, path, branch, commit hash/msg, dirty flag + enhanced fields
 - `scan_repos(workspace_dir) -> Result<Vec<RepoInfo>>` — Main entry point
 - `find_git_repos(workspace_dir) -> Vec<PathBuf>` — WalkDir at depth 2
 - `build_repo_info(path) -> Result<RepoInfo>` — Collect metadata for one repo
 - **4 unit tests** covering discovery, sorting, empty dirs, non-git exclusion
+
+**RepoInfo Fields (expanded for TUI):**
+- `name, path, branch, last_commit_hash, last_commit_msg, has_uncommitted_changes` (base)
+- `latest_tag: String` — Latest annotated/lightweight tag (fallback: empty)
+- `last_commit_time: SystemTime` — Commit timestamp for relative time display
+- `changed_file_count: usize` — Count of unstaged/untracked files
 
 **Responsibilities:**
 - Walk workspace directory to depth 2 only (avoids nested repos)
@@ -69,21 +76,25 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 - Parallelize metadata collection with rayon par_iter
 - Sort results alphabetically
 - Gracefully fall back on git errors (branch="?", message="no commits")
+- Collect enhanced metadata for TUI sidebar enrichment
 
-**Dependencies:** anyhow, rayon, walkdir, git_runner
+**Dependencies:** anyhow, rayon, walkdir, git_runner, std::time::SystemTime
 
 **Key Design:**
 - `min_depth(2).max_depth(2)` — only direct children
 - `par_iter` on collected paths for parallel metadata
 - `.filter_map(|path| build_repo_info(path).ok())` — silent on error repos
 - Sort post-collection for alphabetical order
+- Enhanced fields fallback gracefully (tag="", time=now, count=0)
 
-### git_runner.rs (147 LOC)
+### git_runner.rs (187 LOC)
 **Purpose:** Wrapper around system Git binary; execute Git commands safely
 
 **Key Components:**
 - `run_git(repo_path, args) -> Result<String>` — Core wrapper; uses `git -C <path>`
-- Helper functions: `get_branch()`, `get_last_commit()`, `has_changes()`, `checkout(branch, create)`, `pull()`, `push()`, `commit()`, `status_files()`
+- Basic queries: `get_branch()`, `get_last_commit()`, `has_changes()`, `status_files()`
+- Repo operations: `checkout(branch, create)`, `pull()`, `push()`, `commit()`, `fetch()`
+- Enhanced metadata: `get_latest_tag()`, `get_last_commit_time()`, `changed_file_count()`
 - `BuildTool` enum + `detect_build_tool()`, `resolve_script()`, `run_shell()` — for `repo run`
 - **9 unit tests** covering branch, commit, changes detection, commits, shell execution
 
@@ -92,10 +103,17 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 - Parse and format git output (commit hash + message split by tab)
 - Detect working tree changes with `git status --porcelain`
 - Stage and commit with two-step sequence (add -A, then commit)
+- Collect enhanced metadata: latest tag, commit timestamp, file change count
 - Report errors from stdout or stderr
 - Check Git installation before execution
 
 **Dependencies:** anyhow, std::process::Command
+
+**New Functions (TUI Dashboard):**
+- `get_latest_tag(path) -> Result<String>` — Parse `git describe --tags --abbrev=0`
+- `get_last_commit_time(path) -> Result<SystemTime>` — Parse `git log -1 --format=%ci`
+- `changed_file_count(path) -> Result<usize>` — Count lines in `git status --porcelain`
+- `fetch(path) -> Result<String>` — Fetch from remote without merge
 
 **Key Logic:**
 ```rust
@@ -130,6 +148,27 @@ Command::new("git")
 - Plain-text items for MultiSelect (dialoguer renders its own styling)
 - Column widths: max(all values, minimum floor)
 - Dirty indicator: yellow `*` appended after message
+
+### tui/ (5 modules, ~450 LOC total)
+**Purpose:** Interactive full-screen TUI — lazygit-style repo browser with dashboard, status viewer, and batch operations
+
+**Sub-modules:**
+- `mod.rs` — terminal lifecycle (raw mode, alternate screen, panic hook), 100 ms event loop, dispatch input
+- `app.rs` — `App` state machine; `StatusEntry` with color logic; `parse_status()` via git porcelain
+- `ui.rs` — `render()`: 28/72 horizontal split + 3-line footer; enriched sidebar; batch op status
+- `events.rs` — keyboard dispatch: ↑↓/jk navigate, Space/a multi-select, p/P/f/c/b batch ops, q/Esc quit
+- `batch_ops.rs` — `BatchOp` enum, async threaded execution, progress feedback
+
+**Dependencies:** ratatui 0.26, crossterm 0.27, tokio (async), std::thread
+
+**Key Design:**
+- Panic hook restores terminal before crash — user's shell is never left in raw mode
+- Status colors follow lazygit: green=staged, yellow=modified, red=untracked
+- Selected repo row: blue background + bold (lazygit highlight style)
+- `parse_status()` is standalone — doesn't share code with git_runner to keep modules decoupled
+- Sidebar enriched: checkbox + dirty count, branch w/ ahead/behind, tag, relative commit time
+- Batch ops execute in separate thread; UI shows progress live with ✓/✗ feedback
+- Input mode for text entry (commit message) with prompt overlay
 
 ### setup.rs (188 LOC)
 **Purpose:** Installer binary — copy repo binary to PATH, register in system
@@ -188,6 +227,21 @@ path = "src/main.rs"
 name = "setup"
 path = "src/setup.rs"
 
+Source tree:
+src/
+├── main.rs
+├── cli.rs
+├── repo_scanner.rs
+├── git_runner.rs
+├── ui.rs
+├── setup.rs
+└── tui/
+    ├── mod.rs
+    ├── app.rs
+    ├── ui.rs
+    ├── events.rs
+    └── batch_ops.rs
+
 Release build:
 cargo build --release
 → target/release/repo.exe (or repo)
@@ -216,11 +270,19 @@ main.rs
 ├── repo_scanner::scan_repos()
 │   ├── find_git_repos() → Vec<PathBuf>
 │   └── build_repo_info() → Vec<RepoInfo>
-│       └── git_runner::{get_branch, get_last_commit, has_changes}()
+│       └── git_runner::{get_branch, get_last_commit, has_changes,
+│           get_latest_tag, get_last_commit_time, changed_file_count}()
 ├── ui::select_repos() → Vec<usize>
 └── run_batch()
-    └── git_runner::{checkout, pull, push, commit, status}()
+    └── git_runner::{checkout, pull, push, commit, fetch, status}()
         └── run_git() → Result<String>
+
+tui/mod.rs (interactive TUI)
+├── app.rs → App state + StatusEntry
+├── ui.rs → render() sidebar + status panel
+├── events.rs → keyboard input (↑↓/jk, Space/a, p/P/f/c/b, q)
+└── batch_ops.rs → BatchOp enum + async executor
+    └── git_runner batch operations in thread
 
 setup.rs (independent binary)
 ├── find_source_binary()
@@ -260,8 +322,9 @@ setup.rs (independent binary)
 
 ## Code Quality Metrics
 
-- **Total Source LOC:** ~570 (excluding tests)
-- **Test LOC:** ~190 (13 unit tests)
+- **Total Source LOC:** ~800 (including TUI + batch ops; excluding tests)
+- **Test LOC:** ~190 (9 unit tests)
 - **Cyclomatic Complexity:** Low (no nested loops, simple error handling)
 - **Safe Code:** 100% (no unsafe blocks)
 - **Documentation:** All public functions doc-commented
+- **Async Code:** Batch operations run in tokio threads with live progress feedback
