@@ -31,9 +31,12 @@ pub fn select_repos(repos: &[RepoInfo]) -> Result<Vec<usize>> {
         .map(|r| format_select_line(r, name_w, branch_w))
         .collect();
 
+    // Pre-select all repos; user can deselect with Space, or press 'a' to toggle all
+    let defaults: Vec<bool> = vec![true; items.len()];
     let selections = MultiSelect::new()
-        .with_prompt("Select repositories (space to toggle, enter to confirm)")
+        .with_prompt("Select repositories (space=toggle, a=select/deselect all, enter=confirm)")
         .items(&items)
+        .defaults(&defaults)
         .interact()?;
 
     Ok(selections)
