@@ -127,6 +127,14 @@ $ repo commit -m "update api"
 $ repo status
 ```
 
+**Run any git command across selected repos:**
+
+```
+$ repo git -- log --oneline -5
+$ repo git -- stash
+$ repo git -- diff --stat
+```
+
 ## Dependencies
 
 | Crate | Version | Purpose |

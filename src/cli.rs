@@ -39,6 +39,13 @@ pub enum Commands {
     /// Show git status in selected repositories
     Status,
 
+    /// Run any git command in selected repositories
+    Git {
+        /// Arguments to pass to git (use -- before args starting with -)
+        #[arg(trailing_var_arg = true, required = true)]
+        args: Vec<String>,
+    },
+
     /// Launch the interactive TUI (lazygit-like interface)
     Ui,
 

@@ -50,6 +50,15 @@ fn main() -> Result<()> {
             run_batch(&repos, &selected, |path| git_runner::commit(path, &message));
         }
 
+        Commands::Git { args } => {
+            let repos = repo_scanner::scan_repos(&cwd)?;
+            let selected = ui::select_repos(&repos)?;
+            let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+            run_batch(&repos, &selected, |path| {
+                git_runner::run_git(path, &str_args)
+            });
+        }
+
         Commands::Run { script, jobs } => {
             let repos = repo_scanner::scan_repos(&cwd)?;
             let selected = ui::select_repos(&repos)?;
