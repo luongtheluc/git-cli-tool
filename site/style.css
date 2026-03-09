@@ -87,6 +87,32 @@ nav .container {
   color: var(--text-secondary); max-width: 600px; margin: 0 auto 32px;
 }
 
+/* === Hero Terminal === */
+.hero-terminal {
+  max-width: 650px; margin: 32px auto;
+}
+
+.hero-terminal .terminal { text-align: left; }
+
+.hero-terminal .terminal-body {
+  min-height: 180px; font-size: 0.85rem; line-height: 1.7;
+}
+
+.terminal-title {
+  color: var(--text-secondary); font-family: var(--font-mono);
+  font-size: 0.75rem; margin-left: auto;
+}
+
+.typing-cursor {
+  display: inline-block; width: 8px; height: 16px;
+  background: var(--accent); vertical-align: text-bottom;
+  animation: blink 0.7s step-end infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
 .cta-group { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
 
 .btn {
