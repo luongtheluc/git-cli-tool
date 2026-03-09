@@ -43,12 +43,18 @@
 
   let currentLine = '';
 
+  // Auto-scroll terminal to bottom
+  function scrollToBottom() {
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+
   // Type a command character by character
   function typeCommand(text, callback) {
     let i = 0;
     currentLine = '';
     const line = document.createElement('div');
     terminal.appendChild(line);
+    scrollToBottom();
 
     function tick() {
       if (i < text.length) {
@@ -74,6 +80,7 @@
         const line = document.createElement('div');
         line.innerHTML = lines[i];
         terminal.appendChild(line);
+        scrollToBottom();
         i++;
         setTimeout(next, 60);
       } else {

@@ -95,7 +95,9 @@ nav .container {
 .hero-terminal .terminal { text-align: left; }
 
 .hero-terminal .terminal-body {
-  height: 220px; overflow: hidden; font-size: 0.85rem; line-height: 1.7;
+  height: 280px; overflow-y: auto; overflow-x: hidden;
+  font-size: 0.85rem; line-height: 1.7;
+  scrollbar-width: none; /* hide scrollbar but allow scroll */
 }
 
 .terminal-title {
