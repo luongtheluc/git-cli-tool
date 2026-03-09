@@ -1,10 +1,8 @@
 name: Release
 
-# Triggers on version tags or merge to master
+# Triggers only on version tags (v*)
 on:
   push:
-    branches:
-      - master
     tags:
       - 'v*'
 
