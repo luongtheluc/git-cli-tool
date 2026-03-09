@@ -22,6 +22,7 @@
       <li><a href="#demo">Demo</a></li>
       <li><a href="#install">Install</a></li>
       <li><a href="#commands">Commands</a></li>
+      <li><a href="#tutorial">Tutorial</a></li>
       <li><a href="https://github.com/luongtheluc/git-cli-tool" target="_blank" rel="noopener noreferrer">GitHub</a></li>
     </ul>
   </div>
@@ -171,6 +172,111 @@
         </tbody>
       </table>
     </div>
+  </div>
+</section>
+
+<!-- Tutorial -->
+<section id="tutorial">
+  <div class="container">
+    <h2 class="section-title">// tutorial</h2>
+
+    <div class="tutorial-step fade-in">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <h3>Set up your workspace</h3>
+        <p>Create a folder and clone your repos into it as direct children:</p>
+        <div class="terminal">
+          <div class="terminal-body"><span class="prompt">$</span> mkdir ~/workspace && cd ~/workspace
+<span class="prompt">$</span> git clone git@github.com:org/api-service.git
+<span class="prompt">$</span> git clone git@github.com:org/auth-service.git
+<span class="prompt">$</span> git clone git@github.com:org/frontend.git</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tutorial-step fade-in">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <h3>List and inspect repos</h3>
+        <p>See all repos at a glance — branch, last commit, and dirty state:</p>
+        <div class="terminal">
+          <div class="terminal-body"><span class="prompt">$</span> repo list
+
+<span class="output">REPO              BRANCH        LAST COMMIT</span>
+<span class="output">──────────────────────────────────────────────────────────────</span>
+<span class="output">api-service       </span><span class="highlight">develop</span><span class="output">       a12bc3 fix auth bug</span>
+<span class="output">auth-service      </span><span class="highlight">main</span><span class="output">          7a91de update deps          </span><span class="dirty">*</span>
+<span class="output">frontend          </span><span class="highlight">feature/ui</span><span class="output">    0ab221 add layout</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tutorial-step fade-in">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <h3>Batch checkout + pull</h3>
+        <p>Switch all repos to <code>develop</code> and pull latest code. Select repos with <kbd>Space</kbd>, confirm with <kbd>Enter</kbd>:</p>
+        <div class="terminal">
+          <div class="terminal-body"><span class="prompt">$</span> repo checkout develop
+<span class="prompt">$</span> repo pull</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tutorial-step fade-in">
+      <div class="step-number">4</div>
+      <div class="step-content">
+        <h3>Commit and push across repos</h3>
+        <p>Stage all changes and commit with a shared message, then push:</p>
+        <div class="terminal">
+          <div class="terminal-body"><span class="prompt">$</span> repo commit -m "fix: update API response format"
+<span class="prompt">$</span> repo push</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tutorial-step fade-in">
+      <div class="step-number">5</div>
+      <div class="step-content">
+        <h3>Run any git command</h3>
+        <p>Pass arbitrary git commands to all selected repos with <code>repo git</code>:</p>
+        <div class="terminal">
+          <div class="terminal-body"><span class="prompt">$</span> repo git -- log --oneline -5
+<span class="prompt">$</span> repo git -- stash
+<span class="prompt">$</span> repo git -- diff --stat</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tutorial-step fade-in">
+      <div class="step-number">6</div>
+      <div class="step-content">
+        <h3>Build and test in parallel</h3>
+        <p>Auto-detects build tool (npm, cargo, go, make) per repo:</p>
+        <div class="terminal">
+          <div class="terminal-body"><span class="prompt">$</span> repo run build --jobs 4
+<span class="prompt">$</span> repo run test --jobs 0   <span class="output"># auto: CPU/2 concurrent</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tutorial-step fade-in">
+      <div class="step-number">7</div>
+      <div class="step-content">
+        <h3>Launch the interactive TUI</h3>
+        <p>Full-screen dashboard with status viewer and batch operations — lazygit style:</p>
+        <div class="terminal">
+          <div class="terminal-body"><span class="prompt">$</span> repo ui
+
+<span class="output">┌─ REPOS ──────────────┐┌─ api-service [main] ─────────────────────┐</span>
+<span class="output">│</span><span class="highlight">▶ ● api-service  main</span><span class="output"> ││   </span><span class="highlight">M</span><span class="output">  modified  src/main.rs               │</span>
+<span class="output">│  ● frontend     dev  ││  </span><span class="dirty">??</span><span class="output">  untracked config/local.toml         │</span>
+<span class="output">│    worker       main ││   A  added     tests/test.rs            │</span>
+<span class="output">└──────────────────────┘└──────────────────────────────────────────┘</span></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </section>
 
