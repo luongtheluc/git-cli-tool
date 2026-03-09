@@ -118,6 +118,7 @@ impl OperationProgress {
 }
 
 /// Live progress state for a running batch operation (legacy, kept for reference)
+#[allow(dead_code)]
 pub struct BatchProgress {
     pub total: usize,
     pub completed: usize,
@@ -244,6 +245,11 @@ impl App {
     /// Reuses git_runner::status_files() to avoid duplicating git status parsing.
     pub fn refresh_status(&mut self) {
         if let Some(repo) = self.repos.get(self.selected) {
+            // Show progress modal during git operation
+            self.operation_progress = Some(OperationProgress::Single {
+                op_name: format!("Refreshing {}", repo.name),
+            });
+
             match git_runner::status_files(&repo.path) {
                 Ok(files) => {
                     let entries: Vec<StatusEntry> = files
@@ -263,6 +269,9 @@ impl App {
                     self.message = Some(format!("git error: {}", e));
                 }
             }
+
+            // Clear progress modal after operation completes
+            self.operation_progress = None;
         }
     }
 

@@ -138,13 +138,24 @@ fn start_batch(app: &mut App, op: BatchOp) {
     // Use async execution with channel for live progress
     let rx = super::batch_ops::execute_batch_async(&app.repos, &indices, &op);
 
-    // Store progress state — channel is polled in the event loop (mod.rs)
-    app.operation_progress = Some(super::app::OperationProgress::Batch {
-        total,
-        completed: 0,
-        op_name,
-        results: Vec::new(),
-    });
+    // Store progress state — use Single variant for 1 repo, Batch for multiple
+    app.operation_progress = if total == 1 {
+        // Single repo: show spinner animation
+        let repo_name = app.repos.get(indices[0])
+            .map(|r| r.name.as_str())
+            .unwrap_or("repository");
+        Some(super::app::OperationProgress::Single {
+            op_name: format!("{} {}", op_name, repo_name),
+        })
+    } else {
+        // Multiple repos: show count and progress bar
+        Some(super::app::OperationProgress::Batch {
+            total,
+            completed: 0,
+            op_name,
+            results: Vec::new(),
+        })
+    };
 
     // Invalidate status cache for affected repos
     app.invalidate_status(&indices);
