@@ -2,6 +2,13 @@
 // Keys match data-i18n attributes in index.html
 const translations = {
   vi: {
+    // Navigation
+    'nav.features': 'Tính năng',
+    'nav.demo': 'Demo',
+    'nav.install': 'Cài đặt',
+    'nav.commands': 'Lệnh',
+    'nav.tutorial': 'Hướng dẫn',
+
     // Hero
     'hero.tagline': 'Quản lý nhiều kho Git từ một thư mục workspace. Khám phá, kiểm tra và thao tác hàng loạt trên các kho với giao diện terminal tương tác.',
     'hero.download': 'Tải bản mới nhất',
