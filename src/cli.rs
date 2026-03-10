@@ -46,6 +46,9 @@ pub enum Commands {
         args: Vec<String>,
     },
 
+    /// Audit git health across all repositories (offline check, exit 1 if issues)
+    Audit,
+
     /// Launch the interactive TUI (lazygit-like interface)
     Ui,
 

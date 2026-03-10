@@ -1,16 +1,17 @@
 # Project Roadmap
 
-## Current Status: v0.1.5
+## Current Status: v0.1.5 (Phase 8 In Progress)
 
-**Release Date:** 2026-03-09
-**Status:** Stable, core features + custom git commands + interactive TUI + main integration complete
-**Testing:** 31/31 unit tests passing, all phases e2e validated
+**Release Date:** 2026-03-09 (v0.1.5 stable)
+**Current Phase:** Phase 8 — Interactive Commit Graph Modal (In Progress since 2026-03-10)
+**Status:** Stable core + Audit feature complete + Phase 1-2 of graph visualization complete
+**Testing:** 48/48 unit tests passing (includes 4 new audit tests + 13 graph parser tests)
 **Code Quality:** 8.6/10, no clippy warnings, fully documented, zero unsafe code
 
 ## Version Overview
 
-### v0.1.0 (Current)
-**Core polyrepo management with interactive selection**
+### v0.1.5 (Current)
+**Core polyrepo management with interactive selection + Phase 7 groundwork**
 
 **Completed Features:**
 - [x] Repository auto-discovery (depth-2 scanning)
@@ -28,6 +29,15 @@
 - [x] Comprehensive unit tests
 - [x] Documentation
 - [x] Vietnamese tutorial
+- [x] **NEW (Phase 7):** Git repository audit (`repo audit`)
+  - AuditResult struct with severity levels in `src/git_runner.rs`
+  - CLI command: `repo audit` scans all repos, shows health status table, exits 1 if issues
+  - TUI audit view: press `A` to show audit table, sidebar icons (✓/⚠/✗/↓)
+  - 4 new audit tests (48 total)
+- [x] **NEW (Phase 8.1-8.2):** Commit graph data structures & git operations
+  - CommitGraph parser in `src/commit_graph.rs`
+  - Git operations module: checkout, cherry-pick, rebase, merge
+  - 13 new parser tests
 
 **Known Limitations:**
 - No configuration file support
@@ -35,7 +45,7 @@
 - No filtering before selection (all repos always listed)
 - No commit history or undo
 - ~~No custom git commands~~ (added in v0.1.5 via `repo git`)
-
+- **Graph modal:** Not yet wired to UI (Phase 7.3 in progress)
 
 **Breaking Changes:** None
 
@@ -230,10 +240,10 @@ Windows path separators in config files.
 
 ## Metrics & Success Criteria
 
-### v0.1.5 Status (Phase 6 Complete)
+### v0.1.5 Status (Phase 7 Complete + Phase 8.1-8.2 Building)
 | Metric | Target | Actual | Status |
 |--------|--------|--------|--------|
-| Unit tests | 15+ | 31 | ✓ |
+| Unit tests | 15+ | 48 | ✓ |
 | Code quality | 8.5+ | 8.6/10 | ✓ |
 | Clippy warnings | 0 | 0 | ✓ |
 | Build time | <30s | ~8s | ✓ |
@@ -292,7 +302,34 @@ Windows path separators in config files.
 - [x] Error handling (fatal vs per-repo)
 - [x] Quality: 8.6/10, 31/31 tests passing
 
-### Phase 7: Advanced Features (PLANNED)
+### Phase 7: Repository Audit (COMPLETE)
+- [x] Git runner audit kernel (`src/git_runner.rs`)
+  - Added: `AuditResult` struct with `has_issues()` and `severity()` methods
+  - Offline checks: uncommitted changes, unpushed commits, behind-remote status
+- [x] CLI audit command (`repo audit`)
+  - Scans all repos in parallel, color-coded table output
+  - Exit code 1 if any issues, 0 if all clean
+  - Summary footer: warnings, behind, clean counts
+- [x] TUI audit view (press `A`)
+  - Sidebar icons: ✓ (clean), ⚠ (warning), ✗ (critical), ↓ (behind)
+  - Main panel audit table with 6 columns
+  - Toggle back to status view with `A` or `Esc`
+- [x] Testing: 4 new unit tests (48 total, all passing)
+- **Status:** Production ready, Phase 7 Complete (2026-03-10)
+
+### Phase 8: Interactive Commit Graph Modal (IN PROGRESS)
+- [x] Phase 1: Data structures & state management (Complete 2026-03-10)
+- [x] Phase 2: Git integration & commits parsing (Complete 2026-03-10)
+  - Added: `get_commit_graph()`, `git_checkout()`, `git_cherry_pick()`, `git_rebase()`, `git_merge()`
+  - Implemented: `commit_graph.rs` parser for git log ASCII output
+  - Tests: 13 new unit tests added (44 total, all passing)
+- [ ] Phase 3: Modal rendering & pagination (In Progress 2026-03-10)
+- [ ] Phase 4: Event handling & navigation
+- [ ] Phase 5: Git operations from graph selection
+- **Goal:** Open interactive ASCII commit graph with Shift+G. Display all branches, paginated 50-commit pages, execute git operations (checkout, cherry-pick, rebase, merge) directly from selected commits.
+- **Target:** v0.2.0 release
+
+### Phase 8: Advanced Features (PLANNED)
 - [ ] Dependency graph
 - [ ] Worktree integration
 - [ ] Changelog generation

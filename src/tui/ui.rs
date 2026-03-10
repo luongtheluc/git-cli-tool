@@ -2,11 +2,11 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
+    widgets::{Block, Borders, Cell, List, ListItem, ListState, Paragraph, Row, Table},
     Frame,
 };
 
-use super::app::{App, InputMode, Panel};
+use super::app::{App, InputMode, MainView, Panel};
 use crate::text_utils;
 
 /// Top-level render function — called every frame.
@@ -108,6 +108,18 @@ fn render_sidebar(f: &mut Frame, app: &App, area: Rect) {
                 ));
             }
 
+            // Audit severity icon (shown after audit runs)
+            if let Some(audit) = app.audit_cache.get(&i) {
+                let (icon, color) = match audit.severity() {
+                    "clean"    => ("✓", Color::Green),
+                    "warning"  => ("⚠", Color::Yellow),
+                    "critical" => ("✗", Color::Red),
+                    "behind"   => ("↓", Color::Cyan),
+                    _          => ("?", Color::DarkGray),
+                };
+                spans.push(Span::styled(format!(" {}", icon), Style::default().fg(color)));
+            }
+
             ListItem::new(Line::from(spans))
         })
         .collect();
@@ -146,8 +158,94 @@ fn render_sidebar(f: &mut Frame, app: &App, area: Rect) {
     f.render_stateful_widget(list, area, &mut state);
 }
 
-/// Right main panel: git status of the selected repo.
+/// Right main panel: routes to status or audit view based on app.main_view.
 fn render_main(f: &mut Frame, app: &App, area: Rect) {
+    match app.main_view {
+        MainView::Status => render_status_panel(f, app, area),
+        MainView::Audit  => render_audit_view(f, app, area),
+    }
+}
+
+/// Show full audit table for all repos (populated after 'A' audit).
+fn render_audit_view(f: &mut Frame, app: &App, area: Rect) {
+    let border_style = panel_border_style(app.focused_panel == Panel::Main);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(border_style)
+        .title(Span::styled(
+            " AUDIT ",
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+        ));
+
+    if app.audit_cache.is_empty() {
+        let p = Paragraph::new("  No audit data — press A to run")
+            .block(block)
+            .style(Style::default().fg(Color::DarkGray));
+        f.render_widget(p, area);
+        return;
+    }
+
+    let mut sorted_indices: Vec<usize> = app.audit_cache.keys().cloned().collect();
+    sorted_indices.sort();
+
+    let rows: Vec<Row> = sorted_indices
+        .iter()
+        .filter_map(|&idx| {
+            let audit = app.audit_cache.get(&idx)?;
+            let repo_name = app.repos.get(idx).map(|r| r.name.as_str()).unwrap_or("?");
+            let uncommitted = if audit.uncommitted > 0 {
+                format!("✗ {}", audit.uncommitted)
+            } else {
+                "✓".to_string()
+            };
+            let unpushed = if audit.unpushed > 0 { format!("↑ {}", audit.unpushed) } else { "—".to_string() };
+            let behind   = if audit.behind   > 0 { format!("↓ {}", audit.behind)   } else { "—".to_string() };
+            let status   = match audit.severity() {
+                "critical" => "✗ critical",
+                "warning"  => "⚠ warning",
+                "behind"   => "↓ behind",
+                _          => "✓ clean",
+            };
+            let color = match audit.severity() {
+                "critical" => Color::Red,
+                "warning"  => Color::Yellow,
+                "behind"   => Color::Cyan,
+                _          => Color::Green,
+            };
+            let style = Style::default().fg(color);
+            Some(Row::new(vec![
+                Cell::from(repo_name.to_string()).style(style),
+                Cell::from(audit.branch.clone()).style(style),
+                Cell::from(uncommitted).style(style),
+                Cell::from(unpushed).style(style),
+                Cell::from(behind).style(style),
+                Cell::from(status).style(style),
+            ]))
+        })
+        .collect();
+
+    let header = Row::new(vec!["Repo", "Branch", "Uncommitted", "Unpushed", "Behind", "Status"])
+        .style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD));
+
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Percentage(22),
+            Constraint::Percentage(16),
+            Constraint::Percentage(16),
+            Constraint::Percentage(13),
+            Constraint::Percentage(13),
+            Constraint::Percentage(20),
+        ],
+    )
+    .header(header)
+    .block(block);
+
+    f.render_widget(table, area);
+}
+
+/// Git status of the selected repo.
+fn render_status_panel(f: &mut Frame, app: &App, area: Rect) {
     let active = app.focused_panel == Panel::Main;
     let border_style = panel_border_style(active);
 
@@ -289,6 +387,7 @@ fn render_footer(f: &mut Frame, app: &App, area: Rect) {
         hint(" c "), Span::raw("Commit "),
         hint(" b "), Span::raw("Branch "),
         hint(" g "), Span::raw("Git args "),
+        hint(" A "), Span::raw("Audit "),
         hint(" r "), Span::raw("Refresh "),
         hint(" q "), Span::raw("Quit"),
         Span::styled(

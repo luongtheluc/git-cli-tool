@@ -227,6 +227,51 @@ pub fn resolve_script(script: &str, tool: &BuildTool) -> String {
     }
 }
 
+/// Aggregated git health state for one repository (offline — no fetch needed)
+#[derive(Debug, Clone)]
+pub struct AuditResult {
+    pub branch: String,      // current branch name
+    pub uncommitted: usize,  // count of changed/untracked files
+    pub unpushed: u32,       // commits ahead of upstream
+    pub behind: u32,         // commits behind upstream
+    pub no_upstream: bool,   // true if no remote tracking branch
+}
+
+impl AuditResult {
+    /// Returns true if there are any issues (dirty, unpushed, or behind)
+    pub fn has_issues(&self) -> bool {
+        self.uncommitted > 0 || self.unpushed > 0 || self.behind > 0
+    }
+
+    /// Short severity label: "clean" | "warning" | "critical" | "behind"
+    pub fn severity(&self) -> &'static str {
+        if self.uncommitted > 0 && self.unpushed > 0 {
+            "critical"
+        } else if self.uncommitted > 0 || self.unpushed > 0 {
+            "warning"
+        } else if self.behind > 0 {
+            "behind"
+        } else {
+            "clean"
+        }
+    }
+}
+
+/// Collect audit data for a single repo (offline — no git fetch).
+/// Errors (missing upstream, etc.) become zero values; never panics.
+pub fn audit_repo(repo_path: &Path) -> AuditResult {
+    let branch = get_branch(repo_path).unwrap_or_else(|_| "?".into());
+
+    let uncommitted = status_files(repo_path).map(|v| v.len()).unwrap_or(0);
+
+    let (unpushed, behind, no_upstream) = match get_ahead_behind(repo_path) {
+        Ok((ahead, behind)) => (ahead, behind, false),
+        Err(_) => (0, 0, true),
+    };
+
+    AuditResult { branch, uncommitted, unpushed, behind, no_upstream }
+}
+
 /// Execute an arbitrary shell command in `repo_path`, streaming each output line
 /// to stdout prefixed with `prefix`. Returns Ok(true) on success exit code.
 ///
@@ -499,6 +544,54 @@ mod tests {
         
         let result = git_merge(dir.path(), "feature");
         assert!(result.is_ok(), "merge failed: {:?}", result);
+    }
+
+    // Phase 3 Tests: AuditResult + audit_repo()
+
+    #[test]
+    fn test_audit_repo_clean_returns_no_issues() {
+        let dir = create_temp_git_repo();
+        let result = audit_repo(dir.path());
+        assert!(!result.has_issues());
+        assert_eq!(result.severity(), "clean");
+        assert_eq!(result.uncommitted, 0);
+        assert_eq!(result.unpushed, 0);
+    }
+
+    #[test]
+    fn test_audit_repo_dirty_has_issues() {
+        let dir = create_temp_git_repo();
+        fs::write(dir.path().join("dirty.txt"), "change").unwrap();
+        let result = audit_repo(dir.path());
+        assert!(result.has_issues());
+        assert_eq!(result.uncommitted, 1);
+        assert!(result.severity() == "warning" || result.severity() == "critical");
+    }
+
+    #[test]
+    fn test_audit_repo_no_upstream_sets_flag() {
+        let dir = create_temp_git_repo();
+        // No remote configured → get_ahead_behind fails → no_upstream = true
+        let result = audit_repo(dir.path());
+        assert!(result.no_upstream);
+    }
+
+    #[test]
+    fn test_audit_result_severity_levels() {
+        let clean = AuditResult {
+            branch: "main".into(), uncommitted: 0,
+            unpushed: 0, behind: 0, no_upstream: false,
+        };
+        assert_eq!(clean.severity(), "clean");
+
+        let warning = AuditResult { uncommitted: 1, ..clean.clone() };
+        assert_eq!(warning.severity(), "warning");
+
+        let critical = AuditResult { uncommitted: 1, unpushed: 2, ..clean.clone() };
+        assert_eq!(critical.severity(), "critical");
+
+        let behind = AuditResult { behind: 1, ..clean.clone() };
+        assert_eq!(behind.severity(), "behind");
     }
 
     #[test]

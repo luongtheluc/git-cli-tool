@@ -1,7 +1,7 @@
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers, MouseEventKind};
 
-use super::app::{App, InputMode, InputPurpose, Panel};
+use super::app::{App, InputMode, InputPurpose, MainView, Panel};
 use super::batch_ops::BatchOp;
 
 /// Read one key event and mutate app state accordingly.
@@ -228,7 +228,7 @@ fn handle_normal_mode(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
             KeyCode::PageUp => app.scroll_batch_results_up(5),
             KeyCode::PageDown => app.scroll_batch_results_down(5),
             KeyCode::Home => app.reset_batch_result_scroll(),
-            KeyCode::Esc => {
+            KeyCode::Esc | KeyCode::Enter => {
                 match &app.operation_progress {
                     Some(super::app::OperationProgress::Single { .. }) => {
                         // Allow dismissal for single operations (quick, synchronous)
@@ -251,8 +251,9 @@ fn handle_normal_mode(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                 }
             }
             // Provide feedback for blocked keys
-            KeyCode::Char('p') | KeyCode::Char('P') | KeyCode::Char('f') 
-            | KeyCode::Char('c') | KeyCode::Char('b') | KeyCode::Char('g') => {
+            KeyCode::Char('p') | KeyCode::Char('P') | KeyCode::Char('f')
+            | KeyCode::Char('c') | KeyCode::Char('b') | KeyCode::Char('g')
+            | KeyCode::Char('A') => {
                 app.message = Some("Operation already in progress".into());
             }
             _ => {} // Ignore other keys during operation
@@ -295,6 +296,16 @@ fn handle_normal_mode(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
         KeyCode::Char('b') => app.enter_input(InputPurpose::BranchName),
         KeyCode::Char('g') => app.enter_input(InputPurpose::GitCommand),
 
+        // Audit: 'A' toggles audit view (runs on ALL repos, uppercase to avoid conflict with toggle-all 'a')
+        KeyCode::Char('A') => {
+            if app.main_view == MainView::Audit {
+                app.main_view = MainView::Status;
+                app.message = Some("Switched back to status view".into());
+            } else {
+                start_audit(app);
+            }
+        }
+
         // Refresh status of selected repo
         KeyCode::Char('r') | KeyCode::F(5) => {
             app.refresh_status();
@@ -311,6 +322,28 @@ fn handle_normal_mode(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
 
         _ => {}
     }
+}
+
+/// Trigger audit batch on ALL repos (not just selected) with async progress tracking
+fn start_audit(app: &mut App) {
+    let all_indices: Vec<usize> = (0..app.repos.len()).collect();
+    if all_indices.is_empty() {
+        app.message = Some("No repositories found.".into());
+        return;
+    }
+    let op = BatchOp::Audit;
+    let op_name = op.display_name().to_string();
+    let total = all_indices.len();
+    let rx = super::batch_ops::execute_batch_async(&app.repos, &all_indices, &op);
+    app.operation_progress = Some(super::app::OperationProgress::Batch {
+        total,
+        completed: 0,
+        op_name,
+        results: Vec::new(),
+    });
+    app.reset_batch_result_scroll();
+    app.animation_start = Some(std::time::Instant::now());
+    app.batch_receiver = Some(rx);
 }
 
 /// Execute a batch operation on selected repos with async progress tracking

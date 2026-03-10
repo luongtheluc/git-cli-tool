@@ -12,6 +12,7 @@ pub enum BatchOp {
     Checkout(String),
     Commit(String),
     Git(Vec<String>),
+    Audit,
 }
 
 impl BatchOp {
@@ -24,6 +25,7 @@ impl BatchOp {
             BatchOp::Checkout(_) => "Checking out",
             BatchOp::Commit(_) => "Committing",
             BatchOp::Git(_) => "Running git",
+            BatchOp::Audit => "Auditing",
         }
     }
 }
@@ -52,6 +54,7 @@ pub fn execute_batch_async(
         BatchOp::Checkout(b) => OpArgs::WithArg(ArgOp::Checkout, b.clone()),
         BatchOp::Commit(m) => OpArgs::WithArg(ArgOp::Commit, m.clone()),
         BatchOp::Git(args) => OpArgs::Git(args.clone()),
+        BatchOp::Audit => OpArgs::Simple(SimpleOp::Audit),
     };
 
     for (name, path) in tasks {
@@ -62,6 +65,11 @@ pub fn execute_batch_async(
                 OpArgs::Simple(SimpleOp::Pull) => git_runner::pull(&path),
                 OpArgs::Simple(SimpleOp::Push) => git_runner::push(&path),
                 OpArgs::Simple(SimpleOp::Fetch) => git_runner::fetch(&path),
+                OpArgs::Simple(SimpleOp::Audit) => {
+                    // Encode audit result as pipe-delimited string: branch|uncommitted|unpushed|behind|no_upstream
+                    let a = git_runner::audit_repo(&path);
+                    Ok(format!("{}|{}|{}|{}|{}", a.branch, a.uncommitted, a.unpushed, a.behind, a.no_upstream))
+                }
                 OpArgs::WithArg(ArgOp::Checkout, branch) => {
                     git_runner::checkout(&path, branch, false)
                 }
@@ -98,6 +106,7 @@ enum SimpleOp {
     Pull,
     Push,
     Fetch,
+    Audit,
 }
 
 #[derive(Clone)]

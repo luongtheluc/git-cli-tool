@@ -27,6 +27,8 @@ const translations = {
     'feat.error.desc': 'Một kho lỗi không dừng cả batch. Báo lỗi chi tiết từng kho giúp bạn nắm rõ tình hình.',
     'feat.cross.title': 'Đa nền tảng',
     'feat.cross.desc': 'Chạy trên Windows, macOS và Linux. Binary native với đầu ra màu ANSI.',
+    'feat.audit.title': 'Kiểm tra sức khỏe git',
+    'feat.audit.desc': 'Kiểm tra ngoại tuyến tất cả kho: uncommitted, unpushed, behind remote. Bảng màu sắc trực quan, exit code 1 thân thiện với CI.',
 
     // Commands table
     'cmd.header.cmd': 'Lệnh',
@@ -39,6 +41,7 @@ const translations = {
     'cmd.status': 'Xem trạng thái git trên các kho đã chọn',
     'cmd.git': 'Chạy bất kỳ lệnh git nào trên các kho đã chọn',
     'cmd.run': 'Chạy script build trên các kho đã chọn (tự nhận diện build tool)',
+    'cmd.audit': 'Kiểm tra sức khỏe git ngoại tuyến: uncommitted, unpushed, behind (exit 1 nếu có vấn đề)',
     'cmd.ui': 'Mở giao diện TUI tương tác',
 
     // Tutorial
@@ -56,6 +59,8 @@ const translations = {
     'tut.6.desc': 'Tự nhận diện build tool (npm, cargo, go, make) cho từng kho:',
     'tut.7.title': 'Mở giao diện TUI',
     'tut.7.desc': 'Dashboard toàn màn hình với trình xem trạng thái và thao tác hàng loạt — phong cách lazygit:',
+    'tut.8.title': 'Kiểm tra sức khỏe git cho tất cả kho',
+    'tut.8.desc': 'Kiểm tra ngoại tuyến uncommitted, unpushed và behind remote cho tất cả kho. Phù hợp tích hợp vào CI pipeline:',
   }
 };
 

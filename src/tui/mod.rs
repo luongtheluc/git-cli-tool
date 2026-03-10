@@ -51,6 +51,18 @@ pub fn run_tui(repos: Vec<RepoInfo>) -> Result<()> {
     result
 }
 
+/// Parse a pipe-delimited audit message back into an AuditResult.
+/// Format: "branch|uncommitted|unpushed|behind|no_upstream"
+fn parse_audit_result(msg: &str) -> Option<crate::git_runner::AuditResult> {
+    let mut parts = msg.splitn(5, '|');
+    let branch = parts.next()?.to_string();
+    let uncommitted = parts.next()?.parse().ok()?;
+    let unpushed = parts.next()?.parse().ok()?;
+    let behind = parts.next()?.parse().ok()?;
+    let no_upstream = parts.next()? == "true";
+    Some(crate::git_runner::AuditResult { branch, uncommitted, unpushed, behind, no_upstream })
+}
+
 /// Main loop: draw one frame, then block up to 100 ms for a key event.
 /// 100 ms tick keeps CPU near zero while still feeling instantaneous to users.
 fn event_loop(
@@ -64,11 +76,11 @@ fn event_loop(
         // Poll batch operation results (non-blocking, incremental updates)
         if let Some(_) = app.batch_receiver.as_ref() {
             let batch_complete = app.poll_batch_results();
-            
+
             if batch_complete {
                 // Batch finished - show completion message and keep modal open for review.
                 app.animation_start = None;
-                if let Some(app::OperationProgress::Batch { total, completed: _, op_name, results }) 
+                if let Some(app::OperationProgress::Batch { total, completed: _, op_name, results })
                     = app.operation_progress.as_ref()
                 {
                     let success = results.iter().filter(|r| r.success).count();
@@ -77,6 +89,18 @@ fn event_loop(
                         .filter(|r| !r.success)
                         .map(|r| format!("{}: {}", r.repo_name, r.message))
                         .collect();
+
+                    let is_audit = op_name == "Auditing";
+                    // Collect audit data before leaving borrow scope (cloned to owned)
+                    let audit_data: Vec<(String, String)> = if is_audit {
+                        results
+                            .iter()
+                            .filter(|r| r.success)
+                            .map(|r| (r.repo_name.clone(), r.message.clone()))
+                            .collect()
+                    } else {
+                        vec![]
+                    };
 
                     if failed.is_empty() {
                         app.message = Some(format!("{} — {}/{} succeeded", op_name, success, total));
@@ -88,6 +112,18 @@ fn event_loop(
                             total,
                             failed.join(", ")
                         ));
+                    }
+
+                    // Populate audit cache and switch to audit view
+                    if is_audit {
+                        for (repo_name, msg) in &audit_data {
+                            if let Some(idx) = app.repos.iter().position(|r| &r.name == repo_name) {
+                                if let Some(audit) = parse_audit_result(msg) {
+                                    app.audit_cache.insert(idx, audit);
+                                }
+                            }
+                        }
+                        app.main_view = app::MainView::Audit;
                     }
                 }
             }

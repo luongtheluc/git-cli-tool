@@ -74,6 +74,24 @@ pub fn pad_to_width(text: &str, target_width: usize) -> String {
     format!("{}{}", text, " ".repeat(padding))
 }
 
+/// Counts the number of grapheme clusters in the text.
+///
+/// Each grapheme cluster counts as 1, regardless of width:
+/// - "é" (single codepoint) = 1 grapheme
+/// - "e\u{0308}" (combining) = 1 grapheme
+/// - "👨‍👩‍👧‍👦" (ZWJ sequence) = 1 grapheme unit
+///
+/// # Example
+/// ```
+/// assert_eq!(grapheme_count("hello"), 5);
+/// assert_eq!(grapheme_count("你好"), 2);      // 2 CJK characters
+/// assert_eq!(grapheme_count("e\u{0308}"), 1); // e with combining diaeresis
+/// ```
+#[allow(dead_code)]
+pub fn grapheme_count(text: &str) -> usize {
+    text.graphemes(true).count()
+}
+
 /// Checks if text fits within a given display width.
 ///
 /// Returns `true` if the text's display width is <= `available_width`.

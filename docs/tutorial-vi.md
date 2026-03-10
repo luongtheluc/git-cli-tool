@@ -357,6 +357,52 @@ Khi một kho thất bại, lỗi được in màu đỏ kèm prefix `[tên-kho]
 
 ---
 
+### `repo audit` — Kiểm tra sức khỏe git
+
+Kiểm tra tất cả kho **ngoại tuyến** (không cần kết nối mạng, không `git fetch`) để phát hiện:
+- **uncommitted** — file thay đổi chưa được commit
+- **unpushed** — commit chưa được push lên remote
+- **behind** — commit trên remote mà local chưa pull về
+
+```bash
+repo audit
+```
+
+Ví dụ đầu ra:
+
+```
+  Repo            Branch    Uncommitted    Unpushed  Behind  Status
+  ─────────────────────────────────────────────────────────────────────
+  api-service     main      ✗ 3 files      ↑ 2       —       ⚠ warning
+  frontend        feature   ✗ 1 file       —         —       ⚠ warning
+  shared-lib      main      ✓              ✓         ↓ 1     ↓ behind
+  infra           main      ✓              ✓         —       ✓ clean
+  ─────────────────────────────────────────────────────────────────────
+  4 repos | 2 warning(s) | 1 behind | 1 clean
+```
+
+**Màu sắc đầu ra:**
+- Đỏ `red` — critical (vừa uncommitted vừa unpushed)
+- Vàng `yellow` — warning (uncommitted hoặc unpushed)
+- Cyan — behind remote
+- Xanh lá `green` — clean
+
+**Mã thoát:**
+- `0` — tất cả kho đều clean
+- `1` — có ít nhất một kho có vấn đề (phù hợp dùng trong CI/CD pipeline)
+
+**Trong giao diện TUI (`repo ui`):**
+
+Nhấn `A` để chạy audit trên tất cả kho. Kết quả hiển thị ngay trong panel chính dưới dạng bảng, đồng thời mỗi kho trong sidebar sẽ hiện icon:
+- `✓` — clean
+- `⚠` — warning
+- `✗` — critical
+- `↓` — behind remote
+
+Nhấn `A` lần nữa để quay lại chế độ xem trạng thái thông thường.
+
+---
+
 ### `repo status` — Xem trạng thái
 
 Chạy `git status` trên các kho được chọn.
@@ -511,6 +557,7 @@ Kiểm tra xem file manifest có tồn tại ngay trong thư mục gốc của k
 | Lệnh | Mô tả |
 |------|-------|
 | `repo ui` | Giao diện TUI tương tác (lazygit-style) |
+| `repo audit` | Kiểm tra sức khỏe git ngoại tuyến cho tất cả kho (exit 1 nếu có vấn đề) |
 | `repo list` | Hiển thị tất cả kho với nhánh và commit gần nhất |
 | `repo checkout <branch> [-b]` | Chuyển nhánh; `-b` để tạo mới nếu chưa tồn tại |
 | `repo pull` | Pull từ remote trên các kho được chọn |

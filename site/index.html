@@ -87,6 +87,11 @@
         <h3 data-i18n="feat.cross.title">Cross-Platform</h3>
         <p data-i18n="feat.cross.desc">Works on Windows, macOS, and Linux. Native binaries with ANSI color output.</p>
       </div>
+      <div class="feature-card fade-in">
+        <div class="icon">&#128202;</div>
+        <h3 data-i18n="feat.audit.title">Audit Health Check</h3>
+        <p data-i18n="feat.audit.desc">Offline audit across all repos: uncommitted, unpushed, behind remote. Color-coded table with CI-friendly exit code.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -180,6 +185,7 @@
           <tr><td>repo status</td><td data-i18n="cmd.status">Show git status in selected repos</td></tr>
           <tr><td>repo git -- &lt;args&gt;</td><td data-i18n="cmd.git">Run any git command in selected repos</td></tr>
           <tr><td>repo run &lt;script&gt;</td><td data-i18n="cmd.run">Run a build script in selected repos (auto-detects tool)</td></tr>
+          <tr><td>repo audit</td><td data-i18n="cmd.audit">Offline health check: uncommitted, unpushed, behind (exits 1 if issues)</td></tr>
           <tr><td>repo ui</td><td data-i18n="cmd.ui">Launch interactive TUI dashboard</td></tr>
         </tbody>
       </table>
@@ -285,6 +291,32 @@
 <span class="output">│  ● frontend     dev  ││  </span><span class="dirty">??</span><span class="output">  untracked config/local.toml         │</span>
 <span class="output">│    worker       main ││   A  added     tests/test.rs            │</span>
 <span class="output">└──────────────────────┘└──────────────────────────────────────────┘</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+    <div class="tutorial-step fade-in">
+      <div class="step-number">8</div>
+      <div class="step-content">
+        <h3 data-i18n="tut.8.title">Audit git health across repos</h3>
+        <p data-i18n="tut.8.desc">Check all repos offline for uncommitted changes, unpushed commits, and behind-remote status. Works great in CI pipelines:</p>
+        <div class="terminal">
+          <div class="terminal-body"><span class="prompt">$</span> repo audit
+
+<span class="output">  Repo            Branch    Uncommitted    Unpushed  Behind  Status</span>
+<span class="output">  ──────────────────────────────────────────────────────────────────</span>
+<span class="output">  api-service     </span><span class="highlight">main</span><span class="output">      </span><span class="dirty">✗ 3 files</span><span class="output">      ↑ 2       —       </span><span class="dirty">⚠ warning</span>
+<span class="output">  frontend        </span><span class="highlight">feature</span><span class="output">   </span><span class="dirty">✗ 1 file</span><span class="output">       —         —       </span><span class="dirty">⚠ warning</span>
+<span class="output">  shared-lib      </span><span class="highlight">main</span><span class="output">      ✓              ✓         ↓ 1     ↓ behind</span>
+<span class="output">  infra           </span><span class="highlight">main</span><span class="output">      </span><span class="highlight">✓              ✓         —       ✓ clean</span>
+<span class="output">  ──────────────────────────────────────────────────────────────────</span>
+<span class="output">  4 repos | 2 warning(s) | 1 behind | 1 clean</span>
+
+<span class="output"># In TUI: press A to run audit, sidebar shows ✓/⚠/✗/↓ per repo</span>
+<span class="prompt">$</span> repo ui  <span class="output"># then press A</span></div>
         </div>
       </div>
     </div>

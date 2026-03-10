@@ -136,6 +136,26 @@ fn main() -> Result<()> {
             }
         }
 
+        Commands::Audit => {
+            let repos = repo_scanner::scan_repos(&cwd)?;
+            if repos.is_empty() {
+                println!("{}", "  No repositories found.".dimmed());
+                return Ok(());
+            }
+            // Parallel audit using rayon — offline, no fetch
+            let results: Vec<(&RepoInfo, git_runner::AuditResult)> = repos
+                .par_iter()
+                .map(|r| (r, git_runner::audit_repo(&r.path)))
+                .collect();
+
+            let has_issues = results.iter().any(|(_, a)| a.has_issues());
+            print_audit_table(&results);
+
+            if has_issues {
+                std::process::exit(1);
+            }
+        }
+
         Commands::Ui => {
             let repos = repo_scanner::scan_repos(&cwd)?;
             if repos.is_empty() {
@@ -162,6 +182,64 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Print color-coded audit table to stdout. Returns after printing summary footer.
+fn print_audit_table(results: &[(&RepoInfo, git_runner::AuditResult)]) {
+    let name_w = results.iter().map(|(r, _)| r.name.len()).max().unwrap_or(4).max(4);
+    let branch_w = results.iter().map(|(_, a)| a.branch.len()).max().unwrap_or(6).max(6);
+
+    // Header
+    println!(
+        "  {:<nw$}  {:<bw$}  {:<13}  {:<8}  {:<6}  {}",
+        "Repo", "Branch", "Uncommitted", "Unpushed", "Behind", "Status",
+        nw = name_w, bw = branch_w
+    );
+    let sep_len = name_w + branch_w + 13 + 8 + 6 + 10 + 12;
+    println!("  {}", "─".repeat(sep_len));
+
+    let (mut warnings, mut behind_count, mut clean_count) = (0usize, 0usize, 0usize);
+
+    for (repo, audit) in results {
+        let uncommitted = if audit.uncommitted > 0 {
+            format!("✗ {} file{}", audit.uncommitted, if audit.uncommitted == 1 { "" } else { "s" })
+        } else {
+            "✓".to_string()
+        };
+        let unpushed = if audit.unpushed > 0 { format!("↑ {}", audit.unpushed) } else { "—".to_string() };
+        let behind   = if audit.behind   > 0 { format!("↓ {}", audit.behind)   } else { "—".to_string() };
+        let status_str = match audit.severity() {
+            "critical" => "✗ critical",
+            "warning"  => "⚠ warning",
+            "behind"   => "↓ behind",
+            _          => "✓ clean",
+        };
+
+        let row = format!(
+            "  {:<nw$}  {:<bw$}  {:<13}  {:<8}  {:<6}  {}",
+            repo.name, audit.branch, uncommitted, unpushed, behind, status_str,
+            nw = name_w, bw = branch_w
+        );
+        let colored = match audit.severity() {
+            "critical" => row.red().to_string(),
+            "warning"  => row.yellow().to_string(),
+            "behind"   => row.cyan().to_string(),
+            _          => row.green().to_string(),
+        };
+        println!("{}", colored);
+
+        match audit.severity() {
+            "warning" | "critical" => warnings += 1,
+            "behind" => behind_count += 1,
+            _ => clean_count += 1,
+        }
+    }
+
+    println!("  {}", "─".repeat(sep_len));
+    println!(
+        "  {} repos | {} warning(s) | {} behind | {} clean",
+        results.len(), warnings, behind_count, clean_count
+    );
 }
 
 /// Resolve --jobs value: 0 → half of logical CPU count (min 1), else use as-is

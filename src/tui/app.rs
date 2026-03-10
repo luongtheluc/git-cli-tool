@@ -7,6 +7,13 @@ use ratatui::style::Color;
 use crate::git_runner;
 use crate::repo_scanner::RepoInfo;
 
+/// Which view is shown in the main panel
+#[derive(Debug, Clone, PartialEq)]
+pub enum MainView {
+    Status, // default: git status files for selected repo
+    Audit,  // audit results table for all repos
+}
+
 /// Which panel currently has keyboard focus
 #[derive(Debug, Clone, PartialEq)]
 pub enum Panel {
@@ -128,6 +135,28 @@ pub struct BatchResult {
     pub message: String,
 }
 
+/// View state for the commit graph modal.
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct GraphModalState {
+    pub is_open: bool,
+    pub selected_commit: usize,
+    pub current_page: usize,
+    pub total_pages: usize,
+}
+
+/// Parsed commit entry used by the graph modal.
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct CommitNode {
+    pub hash: String,
+    pub subject: String,
+    pub author: String,
+    pub graph_line: String,
+    pub branch_decorators: Vec<String>,
+    pub timestamp: String,
+}
+
 /// Core TUI application state — owns all mutable data
 pub struct App {
     pub repos: Vec<RepoInfo>,
@@ -157,6 +186,16 @@ pub struct App {
     pub animation_start: Option<Instant>,
     /// Scroll offset for batch result lines shown in modal
     pub batch_result_scroll: usize,
+    /// Commit graph modal state (None when closed)
+    #[allow(dead_code)]
+    pub graph_state: Option<GraphModalState>,
+    /// Commit graph cache by repo key (repo path as string)
+    #[allow(dead_code)]
+    pub graph_cache: HashMap<String, Vec<CommitNode>>,
+    /// Which view is shown in the main panel (Status or Audit)
+    pub main_view: MainView,
+    /// Cached audit results keyed by repo index (populated after 'A' audit)
+    pub audit_cache: HashMap<usize, git_runner::AuditResult>,
 }
 
 impl App {
@@ -177,6 +216,10 @@ impl App {
             batch_receiver: None,
             animation_start: None,
             batch_result_scroll: 0,
+            graph_state: None,
+            graph_cache: HashMap::new(),
+            main_view: MainView::Status,
+            audit_cache: HashMap::new(),
         }
     }
 

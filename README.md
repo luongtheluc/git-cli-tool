@@ -9,6 +9,7 @@ Manage multiple Git repositories from a workspace folder. Discover, inspect, and
 - Shows branch, last commit, and dirty state per repo
 - Parallel metadata scanning (50+ repos in <2 seconds)
 - Batch operations: checkout, pull, push, commit, status
+- **`repo audit`** — offline git health check across all repos (uncommitted, unpushed, behind); exit code 1 for CI
 - Per-repo error handling (one failure doesn't stop the batch)
 - ANSI color output with aligned columns
 - Works cross-platform (Windows, macOS, Linux)
@@ -127,6 +128,23 @@ $ repo commit -m "update api"
 $ repo status
 ```
 
+**Audit git health across all repos (offline, no fetch):**
+
+```
+$ repo audit
+
+  Repo            Branch    Uncommitted    Unpushed  Behind  Status
+  ─────────────────────────────────────────────────────────────────────
+  api-service     main      ✗ 3 files      ↑ 2       —       ⚠ warning
+  frontend        feature   ✗ 1 file       —         —       ⚠ warning
+  shared-lib      main      ✓              ✓         ↓ 1     ↓ behind
+  infra           main      ✓              ✓         —       ✓ clean
+  ─────────────────────────────────────────────────────────────────────
+  4 repos | 2 warning(s) | 1 behind | 1 clean
+```
+
+Exit code 0 if all clean, exit code 1 if any issues (CI-friendly).
+
 **Run any git command across selected repos:**
 
 ```
@@ -152,11 +170,12 @@ $ repo git -- diff --stat
 
 ```
 src/
-├── main.rs          — Entry point, command dispatch, run_batch() orchestration
+├── main.rs          — Entry point, command dispatch, run_batch(), print_audit_table()
 ├── cli.rs           — clap argument parsing (Cli, Commands enums)
 ├── repo_scanner.rs  — Repository discovery, parallel metadata collection
-├── git_runner.rs    — System git wrapper (git -C pattern)
+├── git_runner.rs    — System git wrapper; AuditResult + audit_repo()
 ├── ui.rs            — Terminal UI (dialoguer multiselect, table printing)
+├── tui/             — Interactive TUI (ratatui): sidebar, audit view, batch ops
 └── setup.rs         — Installer binary (PATH registration)
 ```
 
