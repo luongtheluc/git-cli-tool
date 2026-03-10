@@ -50,10 +50,20 @@ Reduce cognitive load and operational friction when managing many related Git re
 
 ### F5: Command-Line Interface
 - Single binary entry point: `repo`
-- Subcommands: list, checkout, pull, push, commit, status
+- Subcommands: list, checkout, pull, push, commit, status, git, run, ui
 - Argument: branch name for checkout; message string for commit
 - Version and help text via clap derive macros
 - Proper error messages for missing git, invalid paths, etc.
+
+### F6: Interactive Terminal Dashboard (Phase 5 — TUI)
+- Full-screen `repo ui` command with Lazygit-style interface
+- Multi-select sidebar with checkboxes and enriched metadata (tags, commit time, changed files)
+- Batch operations via keyboard shortcuts (p=Pull, P=Push, f=Fetch, c=Commit, b=Checkout)
+- Live progress feedback (✓/✗) for async operations without blocking UI
+- Status panel showing detailed git porcelain output with color-coded staging
+- Input mode for branch names and commit messages with prompt overlay
+- Keyboard navigation (↑↓/jk), selection toggle (Space/a toggle, a=all)
+- Safe terminal restoration on crash via panic hook
 
 ## Non-Functional Requirements
 
@@ -136,6 +146,17 @@ Reduce cognitive load and operational friction when managing many related Git re
 - [ ] Unopenable directories logged
 - [ ] All Result types properly propagated
 - [ ] No panics on user input
+
+### AC6: Interactive Terminal Dashboard (TUI)
+- [ ] `repo ui` displays sidebar with repo list, checkboxes, and metadata
+- [ ] Multi-select works: Space/a toggles, Esc/q closes without changes
+- [ ] Batch operations (p/P/f/c/b) execute async and show live progress
+- [ ] Status panel displays git porcelain with color-coded output (green=staged, yellow=modified, red=untracked)
+- [ ] Input mode accepts branch names and commit messages with validation
+- [ ] Terminal safely restored on crash (panic hook guarantees shell safety)
+- [ ] Navigation (↑↓/jk) works smoothly; selected row highlighted (blue background)
+- [ ] Relative time display (e.g. "2m ago") shown for last commit
+- [ ] Tag badges displayed when available; fallback to empty if no tags
 
 ## Success Metrics
 

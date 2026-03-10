@@ -7,6 +7,7 @@ use ratatui::{
 };
 
 use super::app::{App, InputMode, Panel};
+use crate::text_utils;
 
 /// Top-level render function — called every frame.
 /// Splits the terminal into three zones: sidebar | main panel | footer.
@@ -70,9 +71,17 @@ fn render_sidebar(f: &mut Frame, app: &App, area: Rect) {
                 spans.push(Span::styled("  ", Style::default().fg(Color::DarkGray)));
             }
 
-            // Repo name
+            // Repo name - truncate safely if too long to fit in available sidebar space
+            // Sidebar width varies but typically 30-40 cols for normal terminals
+            // Conservative max to avoid overflow with branch info: 12 columns
+            let max_name_width = 12;
+            let display_name = if text_utils::display_width(&r.name) > max_name_width {
+                text_utils::truncate_to_width(&r.name, max_name_width - 1).to_string() + "…"
+            } else {
+                r.name.clone()
+            };
             spans.push(Span::styled(
-                r.name.clone(),
+                display_name,
                 Style::default().fg(Color::White),
             ));
 
@@ -145,7 +154,17 @@ fn render_main(f: &mut Frame, app: &App, area: Rect) {
     let title = app
         .repos
         .get(app.selected)
-        .map(|r| format!(" {} [{}] ", r.name, r.branch))
+        .map(|r| {
+            // Format title first, then truncate the entire string if needed
+            let title_text = format!(" {} [{}] ", r.name, r.branch);
+            // Max title width prevents overflow on narrow terminals
+            let max_title_width = 35;
+            if text_utils::display_width(&title_text) > max_title_width {
+                text_utils::truncate_to_width(&title_text, max_title_width - 1).to_string() + "…"
+            } else {
+                title_text
+            }
+        })
         .unwrap_or_else(|| " STATUS ".into());
 
     let block = Block::default()
@@ -176,6 +195,15 @@ fn render_main(f: &mut Frame, app: &App, area: Rect) {
         .iter()
         .map(|e| {
             let color = e.status_color();
+            // Truncate long file paths safely using display width to account for CJK, emoji, etc.
+            // Main panel is ~55% of terminal width, minus borders and status indicator
+            // Conservative max width: 28 columns (fits in ~42 col panel with status/label)
+            let max_path_width = 28;
+            let display_path = if text_utils::display_width(&e.path) > max_path_width {
+                text_utils::truncate_to_width(&e.path, max_path_width - 1).to_string() + "…"
+            } else {
+                e.path.clone()
+            };
             let line = Line::from(vec![
                 Span::styled(
                     format!(" {} ", e.code),
@@ -185,7 +213,7 @@ fn render_main(f: &mut Frame, app: &App, area: Rect) {
                     format!("{} ", e.label()),
                     Style::default().fg(color),
                 ),
-                Span::styled(e.path.clone(), Style::default().fg(Color::White)),
+                Span::styled(display_path, Style::default().fg(Color::White)),
             ]);
             ListItem::new(line)
         })

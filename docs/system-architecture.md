@@ -310,6 +310,32 @@ pub enum BatchOp {
      - On error: print error in red, continue
 7. **Process exits:** Return 0
 
+## Control Flow — Example: `repo ui` (TUI Dashboard)
+
+1. **User:** `repo ui`
+2. **cli.rs:** Parse → `Commands::Ui`
+3. **main.rs:** Match Ui arm → `tui::run(repos)`
+4. **repo_scanner.rs:** `scan_repos(cwd)` (same as above)
+5. **tui/mod.rs:** Initialize terminal
+   - Enter raw mode + alternate screen
+   - Install panic hook (restores terminal on crash)
+   - Spawn event loop (100ms polling)
+6. **tui/app.rs:** Render sidebar + status panel
+   - Display repos with checkboxes, branch, tag, relative time
+   - Highlight selected row (blue background)
+   - Parse git status porcelain for detailed file view
+7. **tui/events.rs:** Keyboard dispatch (normal vs. input mode)
+   - ↑↓/jk: navigate
+   - Space/a: toggle selection
+   - p/P/f/c/b: Queue batch operation
+   - t: open input mode for text entry
+   - q: quit
+8. **tui/batch_ops.rs:** Execute operation async in tokio thread
+   - User sees live progress (✓/✗) without blocking UI
+   - Results logged per-repo
+9. **tui/ui.rs:** Re-render with updated status
+10. **Process exits:** Terminal restored, return 0
+
 ## Parallelization Strategy
 
 ### Phase 1: Discovery (Parallel)

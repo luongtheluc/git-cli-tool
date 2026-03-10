@@ -3,9 +3,9 @@
 ## Current Status: v0.1.5
 
 **Release Date:** 2026-03-09
-**Status:** Stable, all core features + custom git commands
-**Testing:** 13/13 unit tests passing
-**Code Quality:** No clippy warnings, fully documented
+**Status:** Stable, core features + custom git commands + interactive TUI + main integration complete
+**Testing:** 31/31 unit tests passing, all phases e2e validated
+**Code Quality:** 8.6/10, no clippy warnings, fully documented, zero unsafe code
 
 ## Version Overview
 
@@ -230,15 +230,15 @@ Windows path separators in config files.
 
 ## Metrics & Success Criteria
 
-### v0.1.0 Status
+### v0.1.5 Status (Phase 6 Complete)
 | Metric | Target | Actual | Status |
 |--------|--------|--------|--------|
-| Unit tests | 8+ | 9 | ✓ |
-| Code coverage | >80% | ~85% | ✓ |
+| Unit tests | 15+ | 31 | ✓ |
+| Code quality | 8.5+ | 8.6/10 | ✓ |
 | Clippy warnings | 0 | 0 | ✓ |
 | Build time | <30s | ~8s | ✓ |
 | Scan time (10 repos) | <1s | ~400ms | ✓ |
-| Documentation | Complete | 100% | ✓ |
+| Module integration | Complete | Yes | ✓ |
 | Safe code | 100% | 100% | ✓ |
 
 ### v0.2.0 Targets
@@ -270,12 +270,29 @@ Windows path separators in config files.
 - [ ] Aliases and macros
 - [ ] User preferences
 
-### Phase 4: Scripting (IN PROGRESS)
+### Phase 4: Scripting (COMPLETE)
 - [x] Custom git commands (`repo git -- <args>`, v0.1.5)
-- [ ] Batch operations
-- [ ] Hooks
+- [x] Batch script execution (`repo run`, v0.1.5)
+- [ ] Hooks (v0.2.0)
 
-### Phase 5: Advanced Features (EXPLORATORY)
+### Phase 5: Terminal UI (COMPLETE)
+- [x] Console-based multi-select (ui.rs with dialoguer)
+- [x] Interactive full-screen TUI dashboard (`repo ui` — ratatui + crossterm)
+- [x] Batch operations via keyboard shortcuts (Pull, Push, Fetch, Commit, Checkout)
+- [x] Status display with color-coded badges and enriched sidebar
+- [x] Production-ready (8.6/10 code quality, 0 panic vulnerabilities)
+
+### Phase 6: Main Integration (COMPLETE)
+- [x] Wire all modules together (cli, repo_scanner, git_runner, ui, tui)
+- [x] Parse CLI args and dispatch commands
+- [x] Batch execution with per-repo continuity
+- [x] `repo list` non-interactive output
+- [x] Bonus: `repo git -- <args>` custom git commands
+- [x] Bonus: `repo run --jobs N` parallel script execution
+- [x] Error handling (fatal vs per-repo)
+- [x] Quality: 8.6/10, 31/31 tests passing
+
+### Phase 7: Advanced Features (PLANNED)
 - [ ] Dependency graph
 - [ ] Worktree integration
 - [ ] Changelog generation

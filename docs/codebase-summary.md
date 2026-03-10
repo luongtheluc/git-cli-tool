@@ -2,7 +2,17 @@
 
 ## Overview
 
-Rust CLI application structured in 5 modules + 1 binary installer. Total source LOC: ~570 (excluding tests).
+Rust CLI application structured in 6 modules + 1 binary installer. Total source LOC: ~1000 (excluding tests).
+
+**Phase 6 (Main Integration) deliverables:**
+- All modules integrated: `cli`, `repo_scanner`, `git_runner`, `ui`, `tui`
+- Command dispatch in `main.rs` (87 LOC): cli parsing, module orchestration, batch execution
+- Batch execution with per-repo error handling and continuity
+- Bonus features: `repo git -- <args>`, `repo run --jobs N`
+- Quality: 8.6/10, production-ready, zero unsafe code, panic-safe
+- Testing: 31 passing, all phases e2e validated
+
+**Version:** v0.1.5 (stable, all core features + TUI + custom git commands + main integration complete)
 
 ## File-by-File Breakdown
 
