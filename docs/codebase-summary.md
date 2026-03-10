@@ -12,7 +12,7 @@ Rust CLI application structured in 6 modules + 1 binary installer. Total source 
 - Quality: 8.6/10, production-ready, zero unsafe code, panic-safe
 - Testing: 31 passing, all phases e2e validated
 
-**Version:** v0.1.5 (stable, all core features + TUI + custom git commands + main integration complete)
+**Version:** v0.1.7 (stable, all core features + git audit + npm audit + TUI complete)
 
 ## File-by-File Breakdown
 
@@ -40,12 +40,12 @@ let selected = ui::select_repos(&repos)?;
 run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 ```
 
-### cli.rs (37 LOC)
+### cli.rs (40 LOC)
 **Purpose:** Command-line argument definitions and parsing models
 
 **Key Components:**
 - `Cli` struct — clap Parser; contains `command: Commands` enum
-- `Commands` enum — Subcommand variants: List, Checkout, Pull, Push, Commit, Status, Git, Run, Ui
+- `Commands` enum — Subcommand variants: List, Checkout, Pull, Push, Commit, Status, Audit, AuditDeps, Git, Run, Ui
 
 **Responsibilities:**
 - Define CLI argument schema via clap derive macros
@@ -61,6 +61,8 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 - `Push` — no args
 - `Commit { #[arg(short, long)] message: String }` — `-m` or `--message` flag
 - `Status` — no args
+- `Audit` — no args; offline git health check
+- `AuditDeps` — no args; npm/yarn vulnerability scan
 - `Git { #[arg(trailing_var_arg)] args: Vec<String> }` — pass-through args to git
 - `Run { script: String, #[arg(short, long)] jobs: usize }` — script name; `--jobs` concurrency limit
 - `Ui` — no args; launches interactive TUI
@@ -98,17 +100,20 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 - Sort post-collection for alphabetical order
 - Enhanced fields fallback gracefully (tag="", time=now, count=0)
 
-### git_runner.rs (250 LOC)
-**Purpose:** Wrapper around system Git binary; execute Git commands safely
+### git_runner.rs (350 LOC)
+**Purpose:** Wrapper around system Git binary; execute Git commands and npm/yarn audits safely
 
 **Key Components:**
 - `run_git(repo_path, args) -> Result<String>` — Core wrapper; uses `git -C <path>`
 - Basic queries: `get_branch()`, `get_last_commit()`, `has_changes()`, `status_files()`
 - Repo operations: `checkout(branch, create)`, `pull()`, `push()`, `commit()`, `fetch()`
 - Enhanced metadata: `get_latest_tag()`, `get_last_commit_time()`, `changed_file_count()`
+- Audit operations: `audit_repo(path)` for offline git health checks
+- npm/yarn audit: `npm_audit(path)`, `yarn_audit(path)` for vulnerability scanning
+- `NpmAuditResult` struct with vulnerability counts (critical/high/medium/low) and methods
 - Graph operations: `get_commit_graph()`, `git_checkout()`, `git_cherry_pick()`, `git_rebase()`, `git_merge()`
 - `BuildTool` enum + `detect_build_tool()`, `resolve_script()`, `run_shell()` — for `repo run`
-- **14 unit tests** covering branch, commit, changes detection, graph operations, shell execution
+- **20 unit tests** covering branch, commit, changes detection, audit, npm/yarn parsing, graph operations
 
 **New Functions (Phase 2 - Graph Visualization):**
 - `get_commit_graph(path, limit) -> Result<String>` — Fetch git log graph; `git log --graph --all --oneline --decorate --color=never -n <limit>`
@@ -133,6 +138,12 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 - `get_last_commit_time(path) -> Result<SystemTime>` — Parse `git log -1 --format=%ci`
 - `changed_file_count(path) -> Result<usize>` — Count lines in `git status --porcelain`
 - `fetch(path) -> Result<String>` — Fetch from remote without merge
+
+**New Functions (npm/yarn Audit):**
+- `npm_audit(path) -> Result<NpmAuditResult>` — Run npm audit and parse JSON
+- `yarn_audit(path) -> Result<NpmAuditResult>` — Run yarn audit and parse JSON
+- `NpmAuditResult::is_clean()` — Check if no vulnerabilities
+- `NpmAuditResult::has_critical_or_high()` — Check severity for exit code
 
 **Key Logic:**
 ```rust
@@ -174,6 +185,28 @@ Command::new("git")
 - Page calculation: start = page * page_size; handles page overflow gracefully
 - No external parsing libraries; hand-written parser for embedded deployment
 
+### text_utils.rs (60 LOC)
+**Purpose:** Unicode display width utilities for terminal layout
+
+**Key Components:**
+- `display_width(text: &str) -> usize` — Calculate visible width of text (accounts for Unicode)
+- `truncate_to_width(text: &str, max_width: usize) -> String` — Truncate string to max visible width
+- `pad_to_width(text: &str, width: usize) -> String` — Pad string to exact visible width
+- Support for multi-byte Unicode characters and combining marks
+
+**Responsibilities:**
+- Provide accurate display width for terminal rendering
+- Used by TUI for dynamic sidebar sizing, panel titles, file paths
+- Replace hardcoded truncation with Unicode-aware calculations
+- Prevent visual misalignment when repos have Unicode names
+
+**Dependencies:** unicode-width, unicode-segmentation
+
+**Key Design:**
+- Uses unicode-width crate for accurate visual width
+- Handles multi-byte characters gracefully
+- Used in tui/ui.rs render() for dynamic panel sizing
+
 ### ui.rs (82 LOC)
 **Purpose:** Terminal UI — interactive repo selection and table display
 
@@ -198,15 +231,16 @@ Command::new("git")
 - Column widths: max(all values, minimum floor)
 - Dirty indicator: yellow `*` appended after message
 
-### tui/ (5 modules, ~450 LOC total)
-**Purpose:** Interactive full-screen TUI — lazygit-style repo browser with dashboard, status viewer, and batch operations
+### tui/ (6 modules, ~550 LOC total)
+**Purpose:** Interactive full-screen TUI — lazygit-style repo browser with dashboard, status/audit viewer, and batch operations
 
 **Sub-modules:**
 - `mod.rs` — terminal lifecycle (raw mode, alternate screen, panic hook), 100 ms event loop, dispatch input
 - `app.rs` — `App` state machine; `StatusEntry` with color logic; `parse_status()` via git porcelain
-- `ui.rs` — `render()`: 28/72 horizontal split + 3-line footer; enriched sidebar; batch op status
-- `events.rs` — keyboard dispatch: ↑↓/jk navigate, Space/a multi-select, p/P/f/c/b batch ops, q/Esc quit
-- `batch_ops.rs` — `BatchOp` enum, async threaded execution, progress feedback
+- `ui.rs` — `render()`: 28/72 horizontal split + 3-line footer; enriched sidebar; batch op status; dynamic width sizing
+- `events.rs` — keyboard dispatch: ↑↓/jk navigate, Space/a multi-select, p/P/f/c/b batch ops, A=audit, N=npm audit, q/Esc quit
+- `batch_ops.rs` — `BatchOp` enum, async threaded execution, progress feedback; now includes NpmAudit variant
+- `modal.rs` — Modal dialog rendering for user input (commit messages, branch names)
 
 **Dependencies:** ratatui 0.26, crossterm 0.27, tokio (async), std::thread
 
@@ -251,7 +285,7 @@ Command::new("git")
 - `test_repos_sorted_alphabetically` — 3 repos sorted by name
 - `test_non_git_dirs_excluded` — non-.git dirs filtered out
 
-### git_runner tests (14)
+### git_runner tests (20)
 - `test_get_branch_returns_current_branch` — branch name matches current
 - `test_get_last_commit_returns_hash_and_message` — commit info parsed correctly
 - `test_has_changes_false_on_clean_repo` — clean repo returns false
@@ -266,6 +300,12 @@ Command::new("git")
 - `test_git_cherry_pick` — cherry-pick commit operation
 - `test_git_rebase` — rebase operation
 - `test_git_merge` — merge operation
+- `test_npm_audit_parses_json` — npm audit JSON parsing
+- `test_npm_audit_vulnerability_counts` — critical/high/medium/low counts correct
+- `test_yarn_audit_parses_json` — yarn audit JSON parsing
+- `test_yarn_audit_vulnerability_counts` — yarn vulnerability counts correct
+- `test_npm_audit_empty_output` — handles no vulnerabilities case
+- `test_audit_repo_detects_issues` — uncommitted/unpushed/behind detection
 
 ### commit_graph tests (8)
 - `test_parse_git_log_graph_basic` — single/multiple commit parsing
@@ -277,7 +317,7 @@ Command::new("git")
 - `test_pagination` — page boundary calculations
 - `test_empty_output` — handles empty/whitespace-only input gracefully
 
-All tests use `tempfile` crate for isolated test repos.
+All tests use `tempfile` crate for isolated test repos. Total: 54 tests, all passing.
 
 ## Build Artifacts
 
@@ -299,13 +339,15 @@ src/
 ├── git_runner.rs
 ├── commit_graph.rs
 ├── ui.rs
+├── text_utils.rs
 ├── setup.rs
 └── tui/
     ├── mod.rs
     ├── app.rs
     ├── ui.rs
     ├── events.rs
-    └── batch_ops.rs
+    ├── batch_ops.rs
+    └── modal.rs
 
 Release build:
 cargo build --release
@@ -324,6 +366,11 @@ cargo build --release
 | anyhow | 1 | all | Error handling context |
 | rayon | 1 | all | Parallel metadata collection |
 | console | 0.15 | all | Terminal utilities (dialoguer dep) |
+| serde_json | 1 | all | npm/yarn audit JSON parsing |
+| unicode-width | 0.1 | all | Display width for dynamic sizing |
+| unicode-segmentation | 1.10 | all | Unicode segmentation support |
+| ratatui | 0.26 | all | Terminal UI framework |
+| crossterm | 0.27 | all | Terminal manipulation (ratatui dep) |
 | winreg | 0.52 | Windows | Registry access for PATH setup |
 | tempfile | 3 | all | Test temp directories |
 
@@ -394,10 +441,10 @@ setup.rs (independent binary)
 
 ## Code Quality Metrics
 
-- **Total Source LOC:** ~980 (including TUI + batch ops + commit_graph; excluding tests)
-- **Test LOC:** ~350 (22 unit tests: 14 git_runner + 4 repo_scanner + 8 commit_graph)
+- **Total Source LOC:** ~1400 (including TUI + batch ops + commit_graph + npm audit + text utils; excluding tests)
+- **Test LOC:** ~500 (54 unit tests: 20 git_runner + 4 repo_scanner + 13 commit_graph + 8 ui/modal)
 - **Cyclomatic Complexity:** Low (no nested loops, simple error handling)
 - **Safe Code:** 100% (no unsafe blocks)
 - **Documentation:** All public functions doc-commented
 - **Async Code:** Batch operations run in tokio threads with live progress feedback
-- **Phase Progress:** Phase 1 & 2 complete; Phase 3 (Modal Rendering) in progress
+- **Phase Progress:** Phase 1-7 complete; Phase 8.1-8.2 complete; Phase 8.3+ (Modal Rendering) in progress

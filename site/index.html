@@ -92,6 +92,11 @@
         <h3 data-i18n="feat.audit.title">Audit Health Check</h3>
         <p data-i18n="feat.audit.desc">Offline audit across all repos: uncommitted, unpushed, behind remote. Color-coded table with CI-friendly exit code.</p>
       </div>
+      <div class="feature-card fade-in">
+        <div class="icon">&#128737;</div>
+        <h3 data-i18n="feat.deps.title">Dependency Audit</h3>
+        <p data-i18n="feat.deps.desc">Scan npm/yarn vulnerabilities across all repos. Critical, high, moderate, low severity breakdown with color-coded output.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -186,6 +191,7 @@
           <tr><td>repo git -- &lt;args&gt;</td><td data-i18n="cmd.git">Run any git command in selected repos</td></tr>
           <tr><td>repo run &lt;script&gt;</td><td data-i18n="cmd.run">Run a build script in selected repos (auto-detects tool)</td></tr>
           <tr><td>repo audit</td><td data-i18n="cmd.audit">Offline health check: uncommitted, unpushed, behind (exits 1 if issues)</td></tr>
+          <tr><td>repo audit-deps</td><td data-i18n="cmd.auditdeps">Scan npm/yarn vulnerabilities across all repos (exits 1 if critical/high)</td></tr>
           <tr><td>repo ui</td><td data-i18n="cmd.ui">Launch interactive TUI dashboard</td></tr>
         </tbody>
       </table>
@@ -317,6 +323,29 @@
 
 <span class="output"># In TUI: press A to run audit, sidebar shows ✓/⚠/✗/↓ per repo</span>
 <span class="prompt">$</span> repo ui  <span class="output"># then press A</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tutorial-step fade-in">
+      <div class="step-number">9</div>
+      <div class="step-content">
+        <h3 data-i18n="tut.9.title">Audit npm/yarn vulnerabilities</h3>
+        <p data-i18n="tut.9.desc">Scan all repos for dependency vulnerabilities. Auto-detects npm or yarn per repo. Exit code 1 if critical or high severity found:</p>
+        <div class="terminal">
+          <div class="terminal-body"><span class="prompt">$</span> repo audit-deps
+
+<span class="output">  Repo            Tool   Critical  High  Medium  Low   Status</span>
+<span class="output">  ────────────────────────────────────────────────────────────────</span>
+<span class="output">  api-service     </span><span class="highlight">npm</span><span class="output">    </span><span class="dirty">2</span><span class="output">         </span><span class="dirty">5</span><span class="output">     3       1     </span><span class="dirty">✗ vulnerable</span>
+<span class="output">  frontend        </span><span class="highlight">yarn</span><span class="output">   —         —     2       4     </span><span class="highlight">⚠ low risk</span>
+<span class="output">  auth-service    </span><span class="highlight">npm</span><span class="output">    —         —     —       —     </span><span class="highlight">✓ clean</span>
+<span class="output">  worker          </span><span class="output">—      </span><span class="output">                                    skipped</span>
+<span class="output">  ────────────────────────────────────────────────────────────────</span>
+<span class="output">  4 repos | 1 vulnerable | 1 low risk | 1 clean | 1 skipped</span>
+
+<span class="output"># In TUI: press N to run npm audit, sidebar shows N✓/N✗/N⚠ per repo</span>
+<span class="prompt">$</span> repo ui  <span class="output"># then press N</span></div>
         </div>
       </div>
     </div>

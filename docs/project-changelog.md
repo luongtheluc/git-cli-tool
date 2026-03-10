@@ -7,19 +7,32 @@ All notable changes to `repo` polyrepo manager are documented here.
 ## [Unreleased]
 
 ### Added
-- **Repository Audit Feature (Phase 7)** — 2026-03-10
-  - Added `AuditResult` struct to `src/git_runner.rs` with severity detection (clean/warning/critical/behind)
-  - New `audit_repo()` function for offline git health checks (uncommitted, unpushed, behind-remote)
-  - CLI command `repo audit` — scans all repos in parallel, prints color-coded table, exits 1 if issues
-  - TUI audit view — press `A` to toggle audit table, sidebar icons show repo health (✓/⚠/✗/↓)
-  - Added 4 new unit tests for audit functions
+- **npm/yarn Vulnerability Audit (Phase 8)** — 2026-03-10
+  - Added `NpmAuditResult` struct to `src/git_runner.rs` with vulnerability counts (critical/high/medium/low)
+  - New `npm_audit()` and `yarn_audit()` functions for package vulnerability scanning
+  - CLI command `repo audit-deps` — scans all repos for package.json/yarn.lock, runs npm/yarn audit, color-coded output
+  - TUI npm audit view — press `N` to toggle npm/yarn audit table, sidebar icons (N✓/N✗/N⚠/N?)
+  - Windows support for npm/yarn execution via `cmd.exe /C` wrapper (conditional compilation)
+  - Added `serde_json` dependency for JSON parsing
+  - Added 6 new unit tests for npm/yarn audit functions
+
+- **Text Utilities Module** — Dynamic terminal width support
+  - New `src/text_utils.rs` module with Unicode display width calculations
+  - Used by TUI for dynamic sidebar and panel sizing (no hardcoded truncation)
+  - Supports Unicode characters in repo names and paths
+
+- **TUI Modal Dialog System**
+  - New `src/tui/modal.rs` for modal dialog rendering
+  - Used for user input prompts (commit messages, branch names)
 
 ### Changed
-- Updated test count from 44 to 48 unit tests (4 new audit tests)
-- Reorganized phase numbering: Phase 7 now Audit, Phase 8+ shifted accordingly
+- Updated test count from 48 to 54 unit tests (6 new npm audit tests)
+- TUI dynamic width sizing: repo names, status panel title, file paths now scale with terminal width
+- Dependencies added: `serde_json`, `unicode-width`, `unicode-segmentation`
 
 ### Fixed
-- None
+- Windows npm/yarn execution — npm and yarn are .cmd scripts requiring `cmd.exe /C` wrapper
+- TUI hardcoded truncation replaced with dynamic Unicode-aware width calculation
 
 ### Security
 - No security changes
@@ -79,9 +92,9 @@ Core features shipped:
 
 | Version | Tests | Code Quality | Release Date |
 |---------|-------|--------------|--------------|
-| Unreleased | 48 | 8.6/10 | — |
-| v0.1.5 | 44 | 8.6/10 | 2026-03-09 |
-| v0.1.4 | 31 | 8.0/10 | Earlier |
+| Unreleased | 54 | 8.7/10 | — |
+| v0.1.5 | 48 | 8.6/10 | 2026-03-09 |
+| v0.1.4 | 44 | 8.6/10 | Earlier |
 
 ---
 

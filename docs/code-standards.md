@@ -14,8 +14,17 @@ src/
 ├── main.rs           — entry point, command dispatch, run_batch()
 ├── cli.rs            — clap argument parsing structs
 ├── repo_scanner.rs   — directory walk, metadata collection
-├── git_runner.rs     — system Git wrapper
+├── git_runner.rs     — system Git wrapper; npm/yarn audit
 ├── ui.rs             — terminal UI (selection, table)
+├── text_utils.rs     — Unicode display width utilities
+├── commit_graph.rs   — commit graph parsing and pagination
+├── tui/              — interactive full-screen TUI (6 modules)
+│   ├── mod.rs
+│   ├── app.rs
+│   ├── ui.rs
+│   ├── events.rs
+│   ├── batch_ops.rs
+│   └── modal.rs      — modal dialog system
 └── setup.rs          — installer binary (separate binary target)
 ```
 
@@ -183,6 +192,33 @@ pub fn run_git(repo_path: &Path, args: &[&str]) -> Result<String> {
 
 **Why git -C:** Avoids process synchronization issues; each call is independent.
 
+### npm/yarn Audit Invocation (Phase 8.2)
+Windows-specific handling: npm and yarn are `.cmd` scripts requiring `cmd.exe /C`:
+
+```rust
+#[cfg(windows)]
+fn run_npm_audit(repo_path: &Path) -> Result<String> {
+    let output = Command::new("cmd")
+        .args(&["/C", "npm audit --json"])
+        .current_dir(repo_path)
+        .output()
+        .context("Failed to run npm audit")?;
+    // ... parse JSON response
+}
+
+#[cfg(not(windows))]
+fn run_npm_audit(repo_path: &Path) -> Result<String> {
+    let output = Command::new("npm")
+        .args(&["audit", "--json"])
+        .current_dir(repo_path)
+        .output()
+        .context("Failed to run npm audit")?;
+    // ... parse JSON response
+}
+```
+
+**Why conditional compilation:** npm/yarn are .cmd scripts on Windows, requiring cmd.exe wrapper. Unix systems execute directly.
+
 ## Terminal I/O
 
 ### Color Output
@@ -253,23 +289,28 @@ fn test_scan_finds_repos() {
 - Error path: graceful failure on git error
 - Edge case: empty input, special characters, permission errors
 
-**Current Coverage:** 9 tests across scanner (4) and git_runner (5).
+**Current Coverage:** 54 tests across scanner (4), git_runner (20), commit_graph (13), ui/modal (8), and TUI (9).
 
 ## Dependencies
 
 ### Approved Crates
 These are vetted for production use:
 
-| Crate | Version | Rationale |
-|-------|---------|-----------|
-| clap | 4 | CLI parsing; standard, actively maintained |
-| dialoguer | 0.11 | Interactive TUI; stable API |
-| colored | 2 | ANSI colors; lightweight |
-| walkdir | 2 | Directory traversal; trusted |
-| anyhow | 1 | Error context; minimal overhead |
-| rayon | 1 | Parallelization; battle-tested |
-| console | 0.15 | Terminal utilities (dialoguer dep) |
-| winreg | 0.52 | Windows registry (setup.rs only) |
+| Crate | Version | Purpose | Rationale |
+|-------|---------|---------|-----------|
+| clap | 4 | CLI parsing | Standard, actively maintained |
+| dialoguer | 0.11 | Interactive TUI | Stable API, lightweight |
+| colored | 2 | ANSI colors | Lightweight, no dependencies |
+| walkdir | 2 | Directory traversal | Trusted, efficient |
+| anyhow | 1 | Error context | Minimal overhead, ergonomic |
+| rayon | 1 | Parallelization | Battle-tested work-stealing |
+| console | 0.15 | Terminal utilities | dialoguer dependency |
+| serde_json | 1 | JSON parsing | Standard, used for npm/yarn audit |
+| unicode-width | 0.1 | Display width | Unicode-aware text layout |
+| unicode-segmentation | 1.10 | Unicode support | Grapheme cluster handling |
+| ratatui | 0.26 | Terminal UI framework | Modern, cross-platform TUI |
+| crossterm | 0.27 | Terminal manipulation | ratatui dependency, cross-platform |
+| winreg | 0.52 | Windows registry | setup.rs only, Windows-specific |
 
 ### Adding New Dependencies
 Before adding a new crate:

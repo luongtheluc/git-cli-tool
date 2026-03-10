@@ -1,17 +1,17 @@
 # Project Roadmap
 
-## Current Status: v0.1.5 (Phase 8 In Progress)
+## Current Status: v0.1.7 (Phase 8.3+ In Progress)
 
-**Release Date:** 2026-03-09 (v0.1.5 stable)
-**Current Phase:** Phase 8 — Interactive Commit Graph Modal (In Progress since 2026-03-10)
-**Status:** Stable core + Audit feature complete + Phase 1-2 of graph visualization complete
-**Testing:** 48/48 unit tests passing (includes 4 new audit tests + 13 graph parser tests)
-**Code Quality:** 8.6/10, no clippy warnings, fully documented, zero unsafe code
+**Release Date:** 2026-03-10 (v0.1.7 with npm audit)
+**Current Phase:** Phase 8 — Advanced Features (npm audit + graph modal in progress)
+**Status:** Stable core + Git audit + npm audit complete + Phase 1-2 of graph visualization complete
+**Testing:** 54/54 unit tests passing (includes 4 git audit tests + 6 npm audit tests + 13 graph parser tests)
+**Code Quality:** 8.7/10, no clippy warnings, fully documented, zero unsafe code
 
 ## Version Overview
 
-### v0.1.5 (Current)
-**Core polyrepo management with interactive selection + Phase 7 groundwork**
+### v0.1.7 (Current)
+**Core polyrepo management + git audit + npm vulnerability audit**
 
 **Completed Features:**
 - [x] Repository auto-discovery (depth-2 scanning)
@@ -27,14 +27,25 @@
 - [x] ANSI color output
 - [x] Setup installer (Windows + Unix)
 - [x] Comprehensive unit tests
-- [x] Documentation
+- [x] Documentation + English tutorial
 - [x] Vietnamese tutorial
-- [x] **NEW (Phase 7):** Git repository audit (`repo audit`)
-  - AuditResult struct with severity levels in `src/git_runner.rs`
-  - CLI command: `repo audit` scans all repos, shows health status table, exits 1 if issues
-  - TUI audit view: press `A` to show audit table, sidebar icons (✓/⚠/✗/↓)
-  - 4 new audit tests (48 total)
-- [x] **NEW (Phase 8.1-8.2):** Commit graph data structures & git operations
+- [x] **Phase 7:** Git repository audit (`repo audit`)
+  - AuditResult struct with severity levels
+  - CLI command: offline health checks (uncommitted, unpushed, behind)
+  - TUI audit view: press `A` to toggle audit table with health icons
+  - 4 new audit tests
+- [x] **Phase 8.1:** npm/yarn vulnerability audit (`repo audit-deps`)
+  - NpmAuditResult struct with vulnerability counts
+  - npm_audit() and yarn_audit() functions
+  - CLI command: scans package.json/yarn.lock, color-coded table
+  - TUI npm audit view: press `N` to toggle, sidebar icons
+  - Windows support via cmd.exe wrapper
+  - 6 new npm audit tests
+- [x] **Phase 8.2:** Text utilities & modal system
+  - text_utils.rs for Unicode display width
+  - tui/modal.rs for user input prompts
+  - Dynamic TUI sizing (no hardcoded truncation)
+- [x] **Phase 8.3-8.4:** Commit graph data structures (partial)
   - CommitGraph parser in `src/commit_graph.rs`
   - Git operations module: checkout, cherry-pick, rebase, merge
   - 13 new parser tests
@@ -240,14 +251,15 @@ Windows path separators in config files.
 
 ## Metrics & Success Criteria
 
-### v0.1.5 Status (Phase 7 Complete + Phase 8.1-8.2 Building)
+### v0.1.7 Status (Phase 7-8.2 Complete + Phase 8.3+ Building)
 | Metric | Target | Actual | Status |
 |--------|--------|--------|--------|
-| Unit tests | 15+ | 48 | ✓ |
-| Code quality | 8.5+ | 8.6/10 | ✓ |
+| Unit tests | 15+ | 54 | ✓ |
+| Code quality | 8.5+ | 8.7/10 | ✓ |
 | Clippy warnings | 0 | 0 | ✓ |
 | Build time | <30s | ~8s | ✓ |
 | Scan time (10 repos) | <1s | ~400ms | ✓ |
+| Npm audit time (10 repos) | <3s | ~1.5s | ✓ |
 | Module integration | Complete | Yes | ✓ |
 | Safe code | 100% | 100% | ✓ |
 
@@ -317,13 +329,29 @@ Windows path separators in config files.
 - [x] Testing: 4 new unit tests (48 total, all passing)
 - **Status:** Production ready, Phase 7 Complete (2026-03-10)
 
-### Phase 8: Interactive Commit Graph Modal (IN PROGRESS)
-- [x] Phase 1: Data structures & state management (Complete 2026-03-10)
-- [x] Phase 2: Git integration & commits parsing (Complete 2026-03-10)
-  - Added: `get_commit_graph()`, `git_checkout()`, `git_cherry_pick()`, `git_rebase()`, `git_merge()`
-  - Implemented: `commit_graph.rs` parser for git log ASCII output
-  - Tests: 13 new unit tests added (44 total, all passing)
-- [ ] Phase 3: Modal rendering & pagination (In Progress 2026-03-10)
+### Phase 8: Advanced Features (IN PROGRESS)
+
+#### 8.1: Git Repository Audit (COMPLETE 2026-03-10)
+- [x] AuditResult struct with offline health checks
+- [x] CLI command `repo audit` with color-coded output
+- [x] TUI audit view (press A) with sidebar icons
+- [x] 4 unit tests
+
+#### 8.2: npm/yarn Vulnerability Audit (COMPLETE 2026-03-10)
+- [x] NpmAuditResult struct with vulnerability counts
+- [x] npm_audit() and yarn_audit() functions
+- [x] CLI command `repo audit-deps` with severity display
+- [x] TUI npm audit view (press N) with sidebar icons
+- [x] Windows support via cmd.exe wrapper
+- [x] text_utils.rs for Unicode-aware display widths
+- [x] tui/modal.rs for user input dialogs
+- [x] Dynamic TUI sizing (no hardcoded truncation)
+- [x] 6 unit tests
+
+#### 8.3-8.4: Commit Graph Data Structures (IN PROGRESS)
+- [x] Data structures & state management
+- [x] Git integration & commits parsing
+- [ ] Phase 3: Modal rendering & pagination
 - [ ] Phase 4: Event handling & navigation
 - [ ] Phase 5: Git operations from graph selection
 - **Goal:** Open interactive ASCII commit graph with Shift+G. Display all branches, paginated 50-commit pages, execute git operations (checkout, cherry-pick, rebase, merge) directly from selected commits.

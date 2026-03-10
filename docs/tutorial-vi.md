@@ -403,6 +403,50 @@ Nhấn `A` lần nữa để quay lại chế độ xem trạng thái thông th�
 
 ---
 
+### `repo audit-deps` — Quét lỗ hổng npm/yarn
+
+Quét tất cả kho để tìm lỗ hổng bảo mật trong các package (npm hoặc yarn).
+
+```bash
+repo audit-deps
+```
+
+Ví dụ đầu ra:
+
+```
+Select repositories (space to toggle, enter to confirm):
+> [x] frontend        feature/ui   0ab221 add layout
+  [x] api-service     develop      a12bc3 fix auth bug
+
+=== frontend ===
+  Package             Critical  High   Medium  Low   Status
+  ─────────────────────────────────────────────────────────
+  lodash              1         3      2       5     ✗ VULNERABLE
+  express             0         1      4       2     ⚠ needs review
+  react               0         0      0       1     ✓ ok
+
+=== api-service ===
+  Package             Critical  High   Medium  Low   Status
+  ─────────────────────────────────────────────────────────
+  all packages        0         0      0       0     ✓ clean
+```
+
+**Mã thoát:**
+- `0` — tất cả kho đều sạch (không có lỗ hổng critical/high)
+- `1` — có ít nhất một kho có lỗ hổng critical hoặc high
+
+**Trong giao diện TUI (`repo ui`):**
+
+Nhấn `N` để chạy npm/yarn audit trên tất cả kho. Kết quả hiển thị bảng chi tiết. Sidebar sẽ hiện icon cho mỗi kho:
+- `N✓` — clean (không lỗ hổng)
+- `N✗` — vulnerable (có critical/high)
+- `N⚠` — review (có medium/low)
+- `N?` — error (không có package.json hoặc audit lỗi)
+
+Nhấn `N` lần nữa để quay lại chế độ xem thông thường.
+
+---
+
 ### `repo status` — Xem trạng thái
 
 Chạy `git status` trên các kho được chọn.
@@ -556,8 +600,9 @@ Kiểm tra xem file manifest có tồn tại ngay trong thư mục gốc của k
 
 | Lệnh | Mô tả |
 |------|-------|
-| `repo ui` | Giao diện TUI tương tác (lazygit-style) |
+| `repo ui` | Giao diện TUI tương tác (lazygit-style); nhấn `A` để audit, `N` để npm audit |
 | `repo audit` | Kiểm tra sức khỏe git ngoại tuyến cho tất cả kho (exit 1 nếu có vấn đề) |
+| `repo audit-deps` | Quét lỗ hổng npm/yarn trên tất cả kho (exit 1 nếu critical/high) |
 | `repo list` | Hiển thị tất cả kho với nhánh và commit gần nhất |
 | `repo checkout <branch> [-b]` | Chuyển nhánh; `-b` để tạo mới nếu chưa tồn tại |
 | `repo pull` | Pull từ remote trên các kho được chọn |

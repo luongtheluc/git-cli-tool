@@ -75,15 +75,19 @@ main.rs (entry point, orchestration)
 │   └── git_runner.rs (system git + enhanced metadata)
 ├── ui.rs (presentation)
 │   └── repo_scanner.rs (RepoInfo type)
-├── git_runner.rs (git operations)
-├── commit_graph.rs (phase 2: graph parsing — used by tui/graph_modal)
+├── git_runner.rs (git operations + npm audit)
+│   ├── serde_json (JSON parsing for npm/yarn audit)
+│   └── text_utils.rs (display width for formatting)
+├── text_utils.rs (Unicode display width utilities)
+├── commit_graph.rs (phase 8.3+: graph parsing — used by tui/graph_modal)
 │   └── tui/app.rs (CommitNode type)
 └── tui/ (interactive full-screen dashboard)
     ├── app.rs (state machine + CommitNode)
-    ├── ui.rs (render sidebar + status)
-    ├── events.rs (keyboard input dispatch)
-    ├── batch_ops.rs (BatchOp enum + async executor)
-    ├── graph_modal.rs (phase 3: modal rendering — uses commit_graph)
+    ├── ui.rs (render sidebar + status + npm audit; uses text_utils)
+    ├── events.rs (keyboard input dispatch; 'A' for audit, 'N' for npm audit)
+    ├── batch_ops.rs (BatchOp enum + async executor; includes NpmAudit variant)
+    ├── modal.rs (user input dialogs for commit messages, branches)
+    ├── graph_modal.rs (phase 8.3+: modal rendering — uses commit_graph)
     └── git_runner.rs (batch operations)
 
 setup.rs (installer, independent binary)
@@ -113,15 +117,20 @@ setup.rs (installer, independent binary)
 - **Parallelization:** par_iter on repo paths; no shared state
 
 #### git_runner.rs
-- **Input:** Repo path, git command arguments
-- **Output:** String (git stdout) or parsed operations (hashes, decorators, subjects)
-- **Responsibility:** Execute git commands safely via `git -C`; provide graph data for parsing
-- **Size:** 250 LOC (expanded with phase 2 graph operations)
-- **Dependencies:** std::process::Command, anyhow, std::sync (for run_shell threading)
+- **Input:** Repo path, git command arguments, package.json/yarn.lock presence
+- **Output:** String (git stdout) or parsed operations (hashes, decorators, subjects, npm audit results)
+- **Responsibility:** Execute git commands safely via `git -C`; provide graph data for parsing; run npm/yarn audits
+- **Size:** 350 LOC (expanded with phase 2 graph + phase 8 npm audit)
+- **Dependencies:** std::process::Command, anyhow, std::sync (for run_shell threading), serde_json
 - **Key Design:** All operations use `git -C <path>` to avoid directory changes
 - **Phase 2 Additions:**
   - `get_commit_graph()` - fetch raw git log with ASCII graph
   - `git_checkout()`, `git_cherry_pick()`, `git_rebase()`, `git_merge()` - advanced git operations
+- **Phase 8.1 (Audit):**
+  - `audit_repo()` - offline git health check (uncommitted, unpushed, behind)
+- **Phase 8.2 (npm Audit):**
+  - `npm_audit()`, `yarn_audit()` - package vulnerability scanning
+  - Windows support: `cmd.exe /C` wrapper for .cmd scripts (npm, yarn on Windows)
 
 #### commit_graph.rs (Phase 2)
 - **Input:** Raw git log output string (from `git log --graph --all --oneline --decorate`)
@@ -257,6 +266,42 @@ for each index in Vec<usize>:
 
 **Key:** Errors are caught, printed in red, and execution continues.
 
+### npm/yarn Audit Phase Data Flow (Phase 8.2)
+
+```
+Vec<RepoInfo>
+    │
+    ├─ for each repo:
+    │   ├─ Check if package.json or yarn.lock exists
+    │   │
+    │   ├─ If yarn.lock:  Run: yarn audit --json
+    │   │                Parse JSON via serde_json
+    │   │
+    │   └─ Elif package.json: Run: npm audit --json
+    │                        Parse JSON via serde_json
+    │
+    ▼
+for each repo:
+    │ (parallel rayon or sequential)
+    ├─ Execute npm/yarn audit
+    │
+    ├─ Parse JSON output → NpmAuditResult {
+    │      critical: usize,
+    │      high: usize,
+    │      medium: usize,
+    │      low: usize,
+    │   }
+    │
+    ├─ Format color-coded table row:
+    │   Repo | Critical(red) | High(red) | Medium(yellow) | Low(dim)
+    │
+    └─ Exit code 1 if critical or high vulns found
+```
+
+**Windows Support:** npm and yarn are .cmd scripts on Windows. Use conditional compilation (`#[cfg(windows)]`) to wrap with `cmd.exe /C`.
+
+**Error Handling:** Repos without package.json are skipped; audit errors print "✗ error" in table.
+
 ## Data Structures
 
 ### RepoInfo Struct (expanded for TUI Dashboard)
@@ -292,6 +337,8 @@ pub enum Commands {
     Push,
     Commit { #[arg(short, long)] message: String },
     Status,
+    Audit,  // offline git health check
+    AuditDeps,  // npm/yarn vulnerability scan
     Git { #[arg(trailing_var_arg)] args: Vec<String> },  // pass-through git args
     Run { script: String, #[arg(short, long, default_value_t = 1)] jobs: usize },
     Ui,  // launches full-screen ratatui TUI
@@ -308,10 +355,28 @@ pub enum BatchOp {
     Fetch,
     Commit(String),                      // Message provided via input mode
     Checkout(String),                    // Branch name provided via input
+    NpmAudit,                            // Phase 8.2: npm/yarn vulnerability scan
 }
 ```
 
 **Execution:** Async in tokio thread; UI notified of completion (✓ or ✗).
+
+### NpmAuditResult Struct (Phase 8.2)
+```rust
+pub struct NpmAuditResult {
+    pub critical: usize,
+    pub high: usize,
+    pub medium: usize,
+    pub low: usize,
+}
+
+impl NpmAuditResult {
+    pub fn is_clean(&self) -> bool { /* all zeros */ }
+    pub fn has_critical_or_high(&self) -> bool { /* critical > 0 || high > 0 */ }
+}
+```
+
+**Sourced from:** `npm audit --json` or `yarn audit --json` JSON parsing via serde_json.
 
 ## Control Flow — Example: `repo pull`
 

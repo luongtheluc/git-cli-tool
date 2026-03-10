@@ -29,6 +29,8 @@ const translations = {
     'feat.cross.desc': 'Chạy trên Windows, macOS và Linux. Binary native với đầu ra màu ANSI.',
     'feat.audit.title': 'Kiểm tra sức khỏe git',
     'feat.audit.desc': 'Kiểm tra ngoại tuyến tất cả kho: uncommitted, unpushed, behind remote. Bảng màu sắc trực quan, exit code 1 thân thiện với CI.',
+    'feat.deps.title': 'Kiểm tra lỗ hổng phụ thuộc',
+    'feat.deps.desc': 'Quét lỗ hổng bảo mật npm/yarn trên tất cả kho. Phân loại critical, high, moderate, low với đầu ra có màu.',
 
     // Commands table
     'cmd.header.cmd': 'Lệnh',
@@ -42,6 +44,7 @@ const translations = {
     'cmd.git': 'Chạy bất kỳ lệnh git nào trên các kho đã chọn',
     'cmd.run': 'Chạy script build trên các kho đã chọn (tự nhận diện build tool)',
     'cmd.audit': 'Kiểm tra sức khỏe git ngoại tuyến: uncommitted, unpushed, behind (exit 1 nếu có vấn đề)',
+    'cmd.auditdeps': 'Quét lỗ hổng npm/yarn trên tất cả kho (exit 1 nếu có critical/high)',
     'cmd.ui': 'Mở giao diện TUI tương tác',
 
     // Tutorial
@@ -61,6 +64,8 @@ const translations = {
     'tut.7.desc': 'Dashboard toàn màn hình với trình xem trạng thái và thao tác hàng loạt — phong cách lazygit:',
     'tut.8.title': 'Kiểm tra sức khỏe git cho tất cả kho',
     'tut.8.desc': 'Kiểm tra ngoại tuyến uncommitted, unpushed và behind remote cho tất cả kho. Phù hợp tích hợp vào CI pipeline:',
+    'tut.9.title': 'Kiểm tra lỗ hổng npm/yarn',
+    'tut.9.desc': 'Quét tất cả kho để tìm lỗ hổng phụ thuộc. Tự nhận diện npm hoặc yarn cho từng kho. Exit code 1 nếu có lỗ hổng critical hoặc high:',
   }
 };
 

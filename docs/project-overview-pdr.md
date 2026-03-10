@@ -3,7 +3,7 @@
 ## Project Summary
 
 **Name:** repo
-**Version:** 0.1.0
+**Version:** 0.1.7
 **Type:** Rust CLI Application
 **Platform:** Windows (primary), cross-platform (macOS/Linux support)
 **License:** MIT (implied)
@@ -59,11 +59,21 @@ Reduce cognitive load and operational friction when managing many related Git re
 - Full-screen `repo ui` command with Lazygit-style interface
 - Multi-select sidebar with checkboxes and enriched metadata (tags, commit time, changed files)
 - Batch operations via keyboard shortcuts (p=Pull, P=Push, f=Fetch, c=Commit, b=Checkout)
+- Audit view: press `A` to toggle git health status (uncommitted, unpushed, behind)
 - Live progress feedback (✓/✗) for async operations without blocking UI
 - Status panel showing detailed git porcelain output with color-coded staging
 - Input mode for branch names and commit messages with prompt overlay
 - Keyboard navigation (↑↓/jk), selection toggle (Space/a toggle, a=all)
 - Safe terminal restoration on crash via panic hook
+
+### F7: npm/yarn Vulnerability Audit (Phase 8.1)
+- `repo audit-deps` CLI command for npm/yarn package scanning
+- Detect package.json or yarn.lock in selected repos
+- Run `npm audit --json` or `yarn audit --json` with JSON parsing
+- Color-coded output: Critical/High in red, Medium in yellow, Low dimmed
+- Exit code 1 if critical or high vulnerabilities found (CI-friendly)
+- TUI integration: press `N` to toggle npm audit view with sidebar icons
+- Windows support: cmd.exe wrapper for .cmd scripts (npm, yarn on Windows)
 
 ## Non-Functional Requirements
 
@@ -108,6 +118,11 @@ Reduce cognitive load and operational friction when managing many related Git re
 - anyhow 1 for error handling
 - rayon 1 for parallelization
 - console 0.15 (dialoguer dependency)
+- serde_json 1 (npm/yarn audit JSON parsing)
+- unicode-width 0.1 (display width for dynamic sizing)
+- unicode-segmentation 1.10 (Unicode support)
+- ratatui 0.26 (full-screen TUI)
+- crossterm 0.27 (terminal manipulation)
 - winreg 0.52 (Windows-only, for installer)
 
 ## Acceptance Criteria

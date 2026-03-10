@@ -10,6 +10,8 @@ Manage multiple Git repositories from a workspace folder. Discover, inspect, and
 - Parallel metadata scanning (50+ repos in <2 seconds)
 - Batch operations: checkout, pull, push, commit, status
 - **`repo audit`** — offline git health check across all repos (uncommitted, unpushed, behind); exit code 1 for CI
+- **`repo audit-deps`** — npm/yarn vulnerability scanning across repos; shows critical/high/medium/low counts; exit code 1 on vulnerabilities
+- **`repo ui`** — full-screen interactive dashboard with keyboard shortcuts for batch ops, status view, and npm audit integration
 - Per-repo error handling (one failure doesn't stop the batch)
 - ANSI color output with aligned columns
 - Works cross-platform (Windows, macOS, Linux)
@@ -50,108 +52,50 @@ Copy-Item target\release\repo.exe $env:USERPROFILE\.cargo\bin\
 cp target/release/repo ~/.cargo/bin/
 ```
 
-## Usage
+## Quick Examples
 
-Run `repo` from a workspace directory containing multiple git repo folders:
-
-```
-workspace/
-├── api-service/       ← contains .git
-├── auth-service/      ← contains .git
-├── frontend/          ← contains .git
-└── worker/            ← contains .git
-```
-
-### Commands
+Run `repo` from a workspace directory containing multiple git repo folders.
 
 **List all repos:**
-
-```
+```bash
 $ repo list
-
-REPO              BRANCH        LAST COMMIT
-──────────────────────────────────────────────────────────────
-api-service       develop       a12bc3 fix auth bug
-auth-service      main          7a91de update deps          *
-frontend          feature/ui    0ab221 add layout
-worker            develop       c2f991 fix queue
 ```
 
-> `*` indicates repos with uncommitted changes.
-
----
-
-**Checkout a branch across selected repos:**
-
-```
+**Checkout a branch on selected repos:**
+```bash
 $ repo checkout develop
-
-Select repositories (space to toggle, enter to confirm):
-> [x] api-service      develop      a12bc3 fix auth bug
-  [x] auth-service     main         7a91de update deps
-  [ ] frontend         feature/ui   0ab221 add layout
-  [x] worker           develop      c2f991 fix queue
-
-=== api-service ===
-Already on 'develop'
-
-=== auth-service ===
-Switched to branch 'develop'
-
-=== worker ===
-Already on 'develop'
 ```
 
----
-
-**Pull in selected repos:**
-
-```
+**Pull, push, commit, or check status:**
+```bash
 $ repo pull
-```
-
-**Push in selected repos:**
-
-```
 $ repo push
-```
-
-**Stage all + commit in selected repos:**
-
-```
-$ repo commit -m "update api"
-```
-
-**Show status in selected repos:**
-
-```
+$ repo commit -m "update dependencies"
 $ repo status
 ```
 
-**Audit git health across all repos (offline, no fetch):**
-
-```
+**Offline audit for issues:**
+```bash
 $ repo audit
-
-  Repo            Branch    Uncommitted    Unpushed  Behind  Status
-  ─────────────────────────────────────────────────────────────────────
-  api-service     main      ✗ 3 files      ↑ 2       —       ⚠ warning
-  frontend        feature   ✗ 1 file       —         —       ⚠ warning
-  shared-lib      main      ✓              ✓         ↓ 1     ↓ behind
-  infra           main      ✓              ✓         —       ✓ clean
-  ─────────────────────────────────────────────────────────────────────
-  4 repos | 2 warning(s) | 1 behind | 1 clean
 ```
 
-Exit code 0 if all clean, exit code 1 if any issues (CI-friendly).
-
-**Run any git command across selected repos:**
-
+**Scan for npm/yarn vulnerabilities:**
+```bash
+$ repo audit-deps
 ```
+
+**Interactive TUI dashboard:**
+```bash
+$ repo ui
+```
+
+**Run custom git commands:**
+```bash
 $ repo git -- log --oneline -5
 $ repo git -- stash
-$ repo git -- diff --stat
 ```
+
+For detailed usage examples and workflows, see [`docs/tutorial-en.md`](./docs/tutorial-en.md).
 
 ## Dependencies
 
@@ -164,27 +108,42 @@ $ repo git -- diff --stat
 | `anyhow` | 1 | Error handling with context |
 | `rayon` | 1 | Parallel metadata collection |
 | `console` | 0.15 | Terminal utilities (dialoguer dependency) |
+| `serde_json` | 1 | npm/yarn audit JSON parsing |
+| `unicode-width` | 0.1 | Display width calculations for dynamic sizing |
+| `unicode-segmentation` | 1.10 | Unicode segmentation for text layout |
+| `ratatui` | 0.26 | Terminal UI framework (interactive dashboard) |
+| `crossterm` | 0.27 | Terminal manipulation (ratatui dependency) |
 | `winreg` | 0.52 | Windows registry access (setup binary only) |
 
 ## Project Structure
 
 ```
 src/
-├── main.rs          — Entry point, command dispatch, run_batch(), print_audit_table()
+├── main.rs          — Entry point, command dispatch, run_batch()
 ├── cli.rs           — clap argument parsing (Cli, Commands enums)
 ├── repo_scanner.rs  — Repository discovery, parallel metadata collection
-├── git_runner.rs    — System git wrapper; AuditResult + audit_repo()
+├── git_runner.rs    — System git wrapper; git & npm/yarn audit operations
 ├── ui.rs            — Terminal UI (dialoguer multiselect, table printing)
-├── tui/             — Interactive TUI (ratatui): sidebar, audit view, batch ops
+├── text_utils.rs    — Unicode display width utilities for dynamic sizing
+├── commit_graph.rs  — Git commit graph parsing and pagination
+├── tui/             — Interactive TUI (ratatui): sidebar, status, audit, batch ops
+│   ├── mod.rs       — Terminal lifecycle and event loop
+│   ├── app.rs       — Application state machine
+│   ├── ui.rs        — Render sidebar and panels
+│   ├── events.rs    — Keyboard input dispatch
+│   ├── batch_ops.rs — Async batch operation execution
+│   └── modal.rs     — Modal dialog rendering for user input
 └── setup.rs         — Installer binary (PATH registration)
 ```
 
 ## Documentation
 
 Key documentation files in `./docs/`:
+- **[`tutorial-en.md`](./docs/tutorial-en.md)** — Detailed usage guide with examples for all commands
 - `project-overview-pdr.md` — Vision, requirements, acceptance criteria
 - `code-standards.md` — Coding conventions, patterns, best practices
 - `codebase-summary.md` — File-by-file breakdown, LOC, responsibilities
 - `system-architecture.md` — Module architecture, data flow, design decisions
 - `project-roadmap.md` — Current status, planned features, long-term vision
 - `tutorial-vi.md` — Vietnamese usage tutorial
+- `project-changelog.md` — Version history and release notes
