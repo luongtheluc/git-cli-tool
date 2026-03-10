@@ -49,6 +49,9 @@ pub enum Commands {
     /// Audit git health across all repositories (offline check, exit 1 if issues)
     Audit,
 
+    /// Audit npm/yarn dependency vulnerabilities across all repositories
+    AuditDeps,
+
     /// Launch the interactive TUI (lazygit-like interface)
     Ui,
 

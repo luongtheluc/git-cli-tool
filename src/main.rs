@@ -156,6 +156,28 @@ fn main() -> Result<()> {
             }
         }
 
+        Commands::AuditDeps => {
+            let repos = repo_scanner::scan_repos(&cwd)?;
+            if repos.is_empty() {
+                println!("{}", "  No repositories found.".dimmed());
+                return Ok(());
+            }
+            // Parallel npm/yarn audit using rayon
+            let results: Vec<(&RepoInfo, Option<git_runner::NpmAuditResult>)> = repos
+                .par_iter()
+                .map(|r| (r, git_runner::run_npm_audit(&r.path)))
+                .collect();
+
+            let has_vulnerable = results.iter().any(|(_, r)| {
+                r.as_ref().map_or(false, |a| a.is_vulnerable())
+            });
+            print_npm_audit_table(&results);
+
+            if has_vulnerable {
+                std::process::exit(1);
+            }
+        }
+
         Commands::Ui => {
             let repos = repo_scanner::scan_repos(&cwd)?;
             if repos.is_empty() {
@@ -182,6 +204,82 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Print color-coded npm/yarn vulnerability audit table to stdout.
+fn print_npm_audit_table(results: &[(&RepoInfo, Option<git_runner::NpmAuditResult>)]) {
+    let name_w = results.iter().map(|(r, _)| r.name.len()).max().unwrap_or(4).max(4);
+
+    println!(
+        "\n  {:<nw$}  {:<5}  {:>8}  {:>5}  {:>6}  {:>4}  {}",
+        "Repo", "Tool", "Critical", "High", "Medium", "Low", "Status",
+        nw = name_w
+    );
+    let sep_len = name_w + 5 + 8 + 5 + 6 + 4 + 12 + 14;
+    println!("  {}", "─".repeat(sep_len));
+
+    let (mut vuln_count, mut clean_count, mut skip_count) = (0usize, 0usize, 0usize);
+
+    for (repo, audit_opt) in results {
+        match audit_opt {
+            None => {
+                skip_count += 1;
+                let row = format!(
+                    "  {:<nw$}  {:<5}  {}",
+                    repo.name, "—", "(skipped — no package.json)",
+                    nw = name_w
+                );
+                println!("{}", row.dimmed());
+            }
+            Some(a) if a.error.is_some() => {
+                skip_count += 1;
+                let tool = if a.has_yarn { "yarn" } else { "npm" };
+                let row = format!(
+                    "  {:<nw$}  {:<5}  {}",
+                    repo.name, tool, a.error.as_deref().unwrap_or("unknown error"),
+                    nw = name_w
+                );
+                println!("{}", row.red());
+            }
+            Some(a) => {
+                let tool = if a.has_yarn { "yarn" } else { "npm" };
+                let crit_s = if a.critical > 0 { format!("✗ {}", a.critical) } else { "—".into() };
+                let high_s = if a.high > 0     { format!("✗ {}", a.high) }     else { "—".into() };
+                let med_s  = if a.moderate > 0  { a.moderate.to_string() }      else { "—".into() };
+                let low_s  = if a.low > 0       { a.low.to_string() }           else { "—".into() };
+                let status = if a.is_vulnerable() { "✗ vulnerable" }
+                             else if a.is_clean() { "✓ clean" }
+                             else { "⚠ low risk" };
+
+                let row = format!(
+                    "  {:<nw$}  {:<5}  {:>8}  {:>5}  {:>6}  {:>4}  {}",
+                    repo.name, tool, crit_s, high_s, med_s, low_s, status,
+                    nw = name_w
+                );
+                let colored = if a.is_vulnerable() {
+                    row.red().to_string()
+                } else if a.is_clean() {
+                    row.green().to_string()
+                } else {
+                    row.yellow().to_string()
+                };
+                println!("{}", colored);
+
+                if a.is_vulnerable() { vuln_count += 1; } else { clean_count += 1; }
+            }
+        }
+    }
+
+    let npm_total = vuln_count + clean_count;
+    println!("  {}", "─".repeat(sep_len));
+    println!(
+        "  {} npm/yarn repos | {} vulnerable | {} clean",
+        npm_total, vuln_count, clean_count
+    );
+    if skip_count > 0 {
+        println!("  {} repos skipped (no package.json)", skip_count);
+    }
+    println!();
 }
 
 /// Print color-coded audit table to stdout. Returns after printing summary footer.

@@ -63,6 +63,41 @@ fn parse_audit_result(msg: &str) -> Option<crate::git_runner::AuditResult> {
     Some(crate::git_runner::AuditResult { branch, uncommitted, unpushed, behind, no_upstream })
 }
 
+/// Parse a pipe-encoded npm audit message back into an NpmAuditResult.
+/// Formats:
+///   "skip"               → None (not an npm/yarn repo)
+///   "e|<1|0>|<message>"  → error result
+///   "v|<1|0>|c|h|m|l|i|t" → vulnerability counts
+fn parse_npm_audit_result(msg: &str) -> Option<crate::git_runner::NpmAuditResult> {
+    if msg == "skip" { return None; }
+    let mut parts = msg.splitn(3, '|');
+    let kind = parts.next()?;
+    let has_yarn = parts.next()? == "1";
+    match kind {
+        "e" => {
+            let err = parts.next().unwrap_or("error");
+            Some(crate::git_runner::NpmAuditResult {
+                critical: 0, high: 0, moderate: 0, low: 0, info: 0, total: 0,
+                has_yarn, error: Some(err.to_string()),
+            })
+        }
+        "v" => {
+            let rest = parts.next()?;
+            let mut nums = rest.split('|');
+            let critical = nums.next()?.parse().ok()?;
+            let high     = nums.next()?.parse().ok()?;
+            let moderate = nums.next()?.parse().ok()?;
+            let low      = nums.next()?.parse().ok()?;
+            let info     = nums.next()?.parse().ok()?;
+            let total    = nums.next()?.parse().ok()?;
+            Some(crate::git_runner::NpmAuditResult {
+                critical, high, moderate, low, info, total, has_yarn, error: None,
+            })
+        }
+        _ => None,
+    }
+}
+
 /// Main loop: draw one frame, then block up to 100 ms for a key event.
 /// 100 ms tick keeps CPU near zero while still feeling instantaneous to users.
 fn event_loop(
@@ -91,8 +126,9 @@ fn event_loop(
                         .collect();
 
                     let is_audit = op_name == "Auditing";
-                    // Collect audit data before leaving borrow scope (cloned to owned)
-                    let audit_data: Vec<(String, String)> = if is_audit {
+                    let is_npm_audit = op_name == "Npm Audit";
+                    // Collect result data before leaving borrow scope (cloned to owned)
+                    let audit_data: Vec<(String, String)> = if is_audit || is_npm_audit {
                         results
                             .iter()
                             .filter(|r| r.success)
@@ -124,6 +160,18 @@ fn event_loop(
                             }
                         }
                         app.main_view = app::MainView::Audit;
+                    }
+                    // Populate npm audit cache and switch to npm audit view
+                    if is_npm_audit {
+                        for (repo_name, msg) in &audit_data {
+                            if let Some(idx) = app.repos.iter().position(|r| &r.name == repo_name) {
+                                if let Some(result) = parse_npm_audit_result(msg) {
+                                    app.npm_audit_cache.insert(idx, result);
+                                }
+                                // "skip" → repo has no package.json, don't insert
+                            }
+                        }
+                        app.main_view = app::MainView::NpmAudit;
                     }
                 }
             }

@@ -253,7 +253,7 @@ fn handle_normal_mode(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
             // Provide feedback for blocked keys
             KeyCode::Char('p') | KeyCode::Char('P') | KeyCode::Char('f')
             | KeyCode::Char('c') | KeyCode::Char('b') | KeyCode::Char('g')
-            | KeyCode::Char('A') => {
+            | KeyCode::Char('A') | KeyCode::Char('N') => {
                 app.message = Some("Operation already in progress".into());
             }
             _ => {} // Ignore other keys during operation
@@ -296,13 +296,23 @@ fn handle_normal_mode(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
         KeyCode::Char('b') => app.enter_input(InputPurpose::BranchName),
         KeyCode::Char('g') => app.enter_input(InputPurpose::GitCommand),
 
-        // Audit: 'A' toggles audit view (runs on ALL repos, uppercase to avoid conflict with toggle-all 'a')
+        // Audit: 'A' toggles git health audit view (all repos)
         KeyCode::Char('A') => {
             if app.main_view == MainView::Audit {
                 app.main_view = MainView::Status;
                 app.message = Some("Switched back to status view".into());
             } else {
                 start_audit(app);
+            }
+        }
+
+        // Npm audit: 'N' toggles npm/yarn vulnerability audit view (all repos)
+        KeyCode::Char('N') => {
+            if app.main_view == MainView::NpmAudit {
+                app.main_view = MainView::Status;
+                app.message = Some("Switched back to status view".into());
+            } else {
+                start_npm_audit(app);
             }
         }
 
@@ -332,6 +342,28 @@ fn start_audit(app: &mut App) {
         return;
     }
     let op = BatchOp::Audit;
+    let op_name = op.display_name().to_string();
+    let total = all_indices.len();
+    let rx = super::batch_ops::execute_batch_async(&app.repos, &all_indices, &op);
+    app.operation_progress = Some(super::app::OperationProgress::Batch {
+        total,
+        completed: 0,
+        op_name,
+        results: Vec::new(),
+    });
+    app.reset_batch_result_scroll();
+    app.animation_start = Some(std::time::Instant::now());
+    app.batch_receiver = Some(rx);
+}
+
+/// Trigger npm/yarn vulnerability audit on ALL repos with async progress tracking
+fn start_npm_audit(app: &mut App) {
+    let all_indices: Vec<usize> = (0..app.repos.len()).collect();
+    if all_indices.is_empty() {
+        app.message = Some("No repositories found.".into());
+        return;
+    }
+    let op = BatchOp::NpmAudit;
     let op_name = op.display_name().to_string();
     let total = all_indices.len();
     let rx = super::batch_ops::execute_batch_async(&app.repos, &all_indices, &op);

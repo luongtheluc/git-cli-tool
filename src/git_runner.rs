@@ -133,6 +133,7 @@ pub fn status_files(repo_path: &Path) -> Result<Vec<(String, String)>> {
 /// Args:
 ///   - `limit`: max commits to fetch (default 50 for pagination)
 /// Command: `git log --graph --all --oneline --decorate --color=never -n <limit>`
+#[allow(dead_code)]
 pub fn get_commit_graph(repo_path: &Path, limit: usize) -> Result<String> {
     let limit_str = limit.to_string();
     run_git(
@@ -153,6 +154,7 @@ pub fn get_commit_graph(repo_path: &Path, limit: usize) -> Result<String> {
 /// Checkout a branch or commit reference.
 /// Args:
 ///   - `ref`: branch name, commit hash, or tag to checkout
+#[allow(dead_code)]
 pub fn git_checkout(repo_path: &Path, ref_name: &str) -> Result<String> {
     run_git(repo_path, &["checkout", ref_name])
 }
@@ -160,6 +162,7 @@ pub fn git_checkout(repo_path: &Path, ref_name: &str) -> Result<String> {
 /// Cherry-pick a commit onto the current branch.
 /// Args:
 ///   - `commit_hash`: the commit hash to cherry-pick
+#[allow(dead_code)]
 pub fn git_cherry_pick(repo_path: &Path, commit_hash: &str) -> Result<String> {
     run_git(repo_path, &["cherry-pick", commit_hash])
 }
@@ -167,6 +170,7 @@ pub fn git_cherry_pick(repo_path: &Path, commit_hash: &str) -> Result<String> {
 /// Rebase current branch onto another ref.
 /// Args:
 ///   - `onto_ref`: branch or commit to rebase onto
+#[allow(dead_code)]
 pub fn git_rebase(repo_path: &Path, onto_ref: &str) -> Result<String> {
     run_git(repo_path, &["rebase", onto_ref])
 }
@@ -174,6 +178,7 @@ pub fn git_rebase(repo_path: &Path, onto_ref: &str) -> Result<String> {
 /// Merge another branch into the current branch.
 /// Args:
 ///   - `ref_name`: branch name or commit to merge
+#[allow(dead_code)]
 pub fn git_merge(repo_path: &Path, ref_name: &str) -> Result<String> {
     run_git(repo_path, &["merge", ref_name])
 }
@@ -270,6 +275,121 @@ pub fn audit_repo(repo_path: &Path) -> AuditResult {
     };
 
     AuditResult { branch, uncommitted, unpushed, behind, no_upstream }
+}
+
+/// Dependency vulnerability audit result for one npm/yarn project
+#[derive(Debug, Clone)]
+pub struct NpmAuditResult {
+    pub critical: u32,
+    pub high: u32,
+    pub moderate: u32,
+    pub low: u32,
+    pub info: u32,
+    pub total: u32,
+    pub has_yarn: bool,
+    pub error: Option<String>,
+}
+
+impl NpmAuditResult {
+    pub fn is_vulnerable(&self) -> bool {
+        self.critical > 0 || self.high > 0
+    }
+    pub fn is_clean(&self) -> bool {
+        self.total == 0 && self.error.is_none()
+    }
+}
+
+/// Parse npm audit v2 JSON output into NpmAuditResult.
+/// npm audit exits non-zero when vulns found — stdout is still valid JSON.
+fn parse_npm_audit_json(json: &str) -> Result<NpmAuditResult> {
+    let v: serde_json::Value = serde_json::from_str(json)
+        .context("failed to parse npm audit JSON")?;
+    let vulns = &v["metadata"]["vulnerabilities"];
+    Ok(NpmAuditResult {
+        critical: vulns["critical"].as_u64().unwrap_or(0) as u32,
+        high:     vulns["high"].as_u64().unwrap_or(0) as u32,
+        moderate: vulns["moderate"].as_u64().unwrap_or(0) as u32,
+        low:      vulns["low"].as_u64().unwrap_or(0) as u32,
+        info:     vulns["info"].as_u64().unwrap_or(0) as u32,
+        total:    vulns["total"].as_u64().unwrap_or(0) as u32,
+        has_yarn: false,
+        error: None,
+    })
+}
+
+/// Parse yarn audit NDJSON output. Scans for the "auditSummary" line.
+/// Caller must compute total after calling.
+fn parse_yarn_audit_ndjson(output: &str) -> Result<NpmAuditResult> {
+    for line in output.lines() {
+        let v: serde_json::Value = match serde_json::from_str(line) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        if v["type"].as_str() == Some("auditSummary") {
+            let vulns = &v["data"]["vulnerabilities"];
+            return Ok(NpmAuditResult {
+                critical: vulns["critical"].as_u64().unwrap_or(0) as u32,
+                high:     vulns["high"].as_u64().unwrap_or(0) as u32,
+                moderate: vulns["moderate"].as_u64().unwrap_or(0) as u32,
+                low:      vulns["low"].as_u64().unwrap_or(0) as u32,
+                info:     vulns["info"].as_u64().unwrap_or(0) as u32,
+                total: 0, // computed by caller: critical+high+moderate+low+info
+                has_yarn: true,
+                error: None,
+            });
+        }
+    }
+    Err(anyhow::anyhow!("no auditSummary line in yarn output"))
+}
+
+/// Run npm or yarn audit in `repo_path`. Returns None if not an npm/yarn project.
+/// npm audit exits non-zero when vulns exist — stdout is still captured and parsed.
+pub fn run_npm_audit(repo_path: &Path) -> Option<NpmAuditResult> {
+    let has_yarn = repo_path.join("yarn.lock").exists();
+    let has_pkg  = repo_path.join("package.json").exists();
+    if !has_pkg && !has_yarn { return None; }
+
+    let (cmd, args): (&str, &[&str]) = if has_yarn {
+        ("yarn", &["audit", "--json"])
+    } else {
+        ("npm", &["audit", "--json"])
+    };
+
+    // On Windows, npm/yarn are .cmd scripts that require cmd.exe to execute.
+    // Direct Command::new("npm") fails because CreateProcessW cannot run .cmd files.
+    #[cfg(windows)]
+    let output = {
+        let mut win_args = vec!["/C", cmd];
+        win_args.extend_from_slice(args);
+        Command::new("cmd").args(&win_args).current_dir(repo_path).output()
+    };
+    #[cfg(not(windows))]
+    let output = Command::new(cmd).args(args).current_dir(repo_path).output();
+
+    match output {
+        Ok(out) => {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let result = if has_yarn {
+                parse_yarn_audit_ndjson(&stdout)
+            } else {
+                parse_npm_audit_json(&stdout)
+            };
+            match result {
+                Ok(mut r) => {
+                    if has_yarn { r.total = r.critical + r.high + r.moderate + r.low + r.info; }
+                    Some(r)
+                }
+                Err(e) => Some(NpmAuditResult {
+                    critical: 0, high: 0, moderate: 0, low: 0, info: 0, total: 0,
+                    has_yarn, error: Some(format!("parse error: {e}")),
+                }),
+            }
+        }
+        Err(e) => Some(NpmAuditResult {
+            critical: 0, high: 0, moderate: 0, low: 0, info: 0, total: 0,
+            has_yarn, error: Some(format!("{cmd} not found: {e}")),
+        }),
+    }
 }
 
 /// Execute an arbitrary shell command in `repo_path`, streaming each output line
@@ -592,6 +712,81 @@ mod tests {
 
         let behind = AuditResult { behind: 1, ..clean.clone() };
         assert_eq!(behind.severity(), "behind");
+    }
+
+    // Phase 4 Tests: NpmAuditResult JSON parsing
+
+    #[test]
+    fn test_parse_npm_audit_json_with_vulns() {
+        let json = r#"{
+            "auditReportVersion": 2,
+            "metadata": {
+                "vulnerabilities": {
+                    "critical": 2, "high": 5, "moderate": 3, "low": 1, "info": 0, "total": 11
+                }
+            }
+        }"#;
+        let r = parse_npm_audit_json(json).unwrap();
+        assert_eq!(r.critical, 2);
+        assert_eq!(r.high, 5);
+        assert_eq!(r.moderate, 3);
+        assert_eq!(r.low, 1);
+        assert_eq!(r.total, 11);
+        assert!(!r.has_yarn);
+        assert!(r.is_vulnerable());
+    }
+
+    #[test]
+    fn test_parse_npm_audit_json_clean() {
+        let json = r#"{
+            "auditReportVersion": 2,
+            "metadata": {
+                "vulnerabilities": {
+                    "critical": 0, "high": 0, "moderate": 0, "low": 0, "info": 0, "total": 0
+                }
+            }
+        }"#;
+        let r = parse_npm_audit_json(json).unwrap();
+        assert!(r.is_clean());
+        assert!(!r.is_vulnerable());
+    }
+
+    #[test]
+    fn test_parse_yarn_audit_ndjson_with_vulns() {
+        let output = r#"{"type":"auditAdvisory","data":{"advisory":{"id":1}}}
+{"type":"auditSummary","data":{"vulnerabilities":{"critical":0,"high":1,"moderate":2,"low":0,"info":0}}}"#;
+        let mut r = parse_yarn_audit_ndjson(output).unwrap();
+        r.total = r.critical + r.high + r.moderate + r.low + r.info;
+        assert_eq!(r.high, 1);
+        assert_eq!(r.moderate, 2);
+        assert_eq!(r.total, 3);
+        assert!(r.has_yarn);
+        assert!(r.is_vulnerable());
+    }
+
+    #[test]
+    fn test_parse_yarn_audit_ndjson_no_summary() {
+        let output = r#"{"type":"auditAdvisory","data":{}}"#;
+        assert!(parse_yarn_audit_ndjson(output).is_err());
+    }
+
+    #[test]
+    fn test_parse_npm_audit_json_invalid() {
+        assert!(parse_npm_audit_json("not json at all").is_err());
+    }
+
+    #[test]
+    fn test_npm_audit_result_methods() {
+        let clean = NpmAuditResult {
+            critical: 0, high: 0, moderate: 0, low: 0, info: 0, total: 0,
+            has_yarn: false, error: None,
+        };
+        assert!(clean.is_clean());
+        assert!(!clean.is_vulnerable());
+
+        let vuln = NpmAuditResult { critical: 1, total: 1, ..clean.clone() };
+        assert!(vuln.is_vulnerable());
+        assert!(!vuln.is_clean());
     }
 
     #[test]

@@ -13,6 +13,7 @@ pub enum BatchOp {
     Commit(String),
     Git(Vec<String>),
     Audit,
+    NpmAudit, // npm/yarn dependency vulnerability scan across all repos
 }
 
 impl BatchOp {
@@ -26,6 +27,7 @@ impl BatchOp {
             BatchOp::Commit(_) => "Committing",
             BatchOp::Git(_) => "Running git",
             BatchOp::Audit => "Auditing",
+            BatchOp::NpmAudit => "Npm Audit",
         }
     }
 }
@@ -55,6 +57,7 @@ pub fn execute_batch_async(
         BatchOp::Commit(m) => OpArgs::WithArg(ArgOp::Commit, m.clone()),
         BatchOp::Git(args) => OpArgs::Git(args.clone()),
         BatchOp::Audit => OpArgs::Simple(SimpleOp::Audit),
+        BatchOp::NpmAudit => OpArgs::Simple(SimpleOp::NpmAudit),
     };
 
     for (name, path) in tasks {
@@ -69,6 +72,24 @@ pub fn execute_batch_async(
                     // Encode audit result as pipe-delimited string: branch|uncommitted|unpushed|behind|no_upstream
                     let a = git_runner::audit_repo(&path);
                     Ok(format!("{}|{}|{}|{}|{}", a.branch, a.uncommitted, a.unpushed, a.behind, a.no_upstream))
+                }
+                OpArgs::Simple(SimpleOp::NpmAudit) => {
+                    // Encode npm/yarn result with discriminant prefix:
+                    //   "skip"               → not an npm/yarn repo
+                    //   "e|<yarn>|<message>" → error (tool not found or parse fail)
+                    //   "v|<yarn>|c|h|m|l|i|t" → vulnerability counts
+                    match git_runner::run_npm_audit(&path) {
+                        None => Ok("skip".to_string()),
+                        Some(a) => {
+                            let yarn = if a.has_yarn { "1" } else { "0" };
+                            if let Some(ref e) = a.error {
+                                Ok(format!("e|{}|{}", yarn, e))
+                            } else {
+                                Ok(format!("v|{}|{}|{}|{}|{}|{}|{}",
+                                    yarn, a.critical, a.high, a.moderate, a.low, a.info, a.total))
+                            }
+                        }
+                    }
                 }
                 OpArgs::WithArg(ArgOp::Checkout, branch) => {
                     git_runner::checkout(&path, branch, false)
@@ -107,6 +128,7 @@ enum SimpleOp {
     Push,
     Fetch,
     Audit,
+    NpmAudit,
 }
 
 #[derive(Clone)]

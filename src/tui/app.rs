@@ -10,8 +10,9 @@ use crate::repo_scanner::RepoInfo;
 /// Which view is shown in the main panel
 #[derive(Debug, Clone, PartialEq)]
 pub enum MainView {
-    Status, // default: git status files for selected repo
-    Audit,  // audit results table for all repos
+    Status,   // default: git status files for selected repo
+    Audit,    // git health audit table for all repos
+    NpmAudit, // npm/yarn dependency vulnerability audit table
 }
 
 /// Which panel currently has keyboard focus
@@ -196,6 +197,8 @@ pub struct App {
     pub main_view: MainView,
     /// Cached audit results keyed by repo index (populated after 'A' audit)
     pub audit_cache: HashMap<usize, git_runner::AuditResult>,
+    /// Cached npm/yarn vulnerability audit results (populated after 'N' audit)
+    pub npm_audit_cache: HashMap<usize, git_runner::NpmAuditResult>,
 }
 
 impl App {
@@ -220,6 +223,7 @@ impl App {
             graph_cache: HashMap::new(),
             main_view: MainView::Status,
             audit_cache: HashMap::new(),
+            npm_audit_cache: HashMap::new(),
         }
     }
 
