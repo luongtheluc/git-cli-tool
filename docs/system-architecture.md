@@ -76,11 +76,14 @@ main.rs (entry point, orchestration)
 ├── ui.rs (presentation)
 │   └── repo_scanner.rs (RepoInfo type)
 ├── git_runner.rs (git operations)
+├── commit_graph.rs (phase 2: graph parsing — used by tui/graph_modal)
+│   └── tui/app.rs (CommitNode type)
 └── tui/ (interactive full-screen dashboard)
-    ├── app.rs (state machine)
+    ├── app.rs (state machine + CommitNode)
     ├── ui.rs (render sidebar + status)
     ├── events.rs (keyboard input dispatch)
     ├── batch_ops.rs (BatchOp enum + async executor)
+    ├── graph_modal.rs (phase 3: modal rendering — uses commit_graph)
     └── git_runner.rs (batch operations)
 
 setup.rs (installer, independent binary)
@@ -90,7 +93,7 @@ setup.rs (installer, independent binary)
 └── winreg (Windows-only)
 ```
 
-**Key:** No circular dependencies. Data flows through RepoInfo struct. TUI runs as separate mode with its own event loop.
+**Key:** No circular dependencies. Data flows through RepoInfo struct. commit_graph provides parsing support for TUI modals. TUI runs as separate mode with its own event loop.
 
 ### Module Responsibilities
 
@@ -111,11 +114,31 @@ setup.rs (installer, independent binary)
 
 #### git_runner.rs
 - **Input:** Repo path, git command arguments
-- **Output:** String (git stdout)
-- **Responsibility:** Execute git commands safely via `git -C`
-- **Size:** 147 LOC
-- **Dependencies:** std::process::Command, anyhow
+- **Output:** String (git stdout) or parsed operations (hashes, decorators, subjects)
+- **Responsibility:** Execute git commands safely via `git -C`; provide graph data for parsing
+- **Size:** 250 LOC (expanded with phase 2 graph operations)
+- **Dependencies:** std::process::Command, anyhow, std::sync (for run_shell threading)
 - **Key Design:** All operations use `git -C <path>` to avoid directory changes
+- **Phase 2 Additions:**
+  - `get_commit_graph()` - fetch raw git log with ASCII graph
+  - `git_checkout()`, `git_cherry_pick()`, `git_rebase()`, `git_merge()` - advanced git operations
+
+#### commit_graph.rs (Phase 2)
+- **Input:** Raw git log output string (from `git log --graph --all --oneline --decorate`)
+- **Output:** `CommitGraph` struct with parsed nodes and pagination
+- **Responsibility:** Parse ASCII graph, extract metadata, support pagination for display
+- **Size:** 180 LOC
+- **Dependencies:** anyhow, crate::tui::app::CommitNode
+- **Key Functions:**
+  - `parse_git_log_graph() -> Result<CommitGraph>` - main parser
+  - `get_page() -> Vec<(String, CommitNode)>` - pagination support
+  - Helper parsers: `extract_hash()`, `extract_decorators()`, `extract_subject()`
+- **Key Design:**
+  - Hand-written parser (no external crates)
+  - Defensive parsing with `.unwrap_or_default()`
+  - Preserves raw graph line for display
+  - Returns CommitNode for easy UI rendering
+  - Pagination ready for modal display (phase 3)
 
 #### ui.rs
 - **Input:** Vec<RepoInfo> from scanner
@@ -132,12 +155,12 @@ setup.rs (installer, independent binary)
 - **Size:** 87 LOC
 - **Key Function:** `run_batch<F>(repos, selected, operation)` — generic batch executor
 
-#### tui/ (5 modules)
-- **Input:** `Vec<RepoInfo>` from scanner
-- **Output:** Full-screen terminal UI with batch operations
-- **Responsibility:** Lazygit-style TUI — enriched sidebar (checkbox, tag, time), status panel, batch operations, keyboard navigation
-- **Size:** ~450 LOC across 5 files
-- **Dependencies:** ratatui 0.26, crossterm 0.27, tokio (async), git_runner
+#### tui/ (5+ modules)
+- **Input:** `Vec<RepoInfo>` from scanner; `CommitGraph` from parser (phase 3)
+- **Output:** Full-screen terminal UI with batch operations and modals
+- **Responsibility:** Lazygit-style TUI — enriched sidebar (checkbox, tag, time), status panel, batch operations, modals, keyboard navigation
+- **Size:** ~450+ LOC across 5 files (phase 3 will add graph_modal.rs)
+- **Dependencies:** ratatui 0.26, crossterm 0.27, tokio (async), git_runner, commit_graph (phase 3)
 - **Key Design:**
   - Alternate screen + raw mode; 100 ms poll loop; panic hook guarantees terminal restore
   - Multi-select checkboxes (Space/a to toggle all)
@@ -145,6 +168,7 @@ setup.rs (installer, independent binary)
   - Batch operations (p=Pull, P=Push, f=Fetch, c=Commit, b=Branch) execute async in thread
   - Input mode for text entry (branch name, commit message)
   - Live progress feedback (✓ on success, ✗ on error)
+  - **Phase 3 (In Progress):** Modal system for commit graph visualization with pagination
 
 #### setup.rs
 - **Input:** Environment (PATH, USERPROFILE/HOME)
@@ -335,6 +359,72 @@ pub enum BatchOp {
    - Results logged per-repo
 9. **tui/ui.rs:** Re-render with updated status
 10. **Process exits:** Terminal restored, return 0
+
+## Control Flow — Example: Graph Modal (Phase 3 — In Progress)
+
+1. **User (in TUI):** Press `g` to open commit graph modal
+2. **tui/events.rs:** Match input → signal modal open
+3. **tui/app.rs:** Set modal state (open=true, page=0)
+4. **git_runner.rs:** `get_commit_graph(&repo_path, limit=50)`
+   - Execute: `git log --graph --all --oneline --decorate --color=never -n 50`
+   - Return raw ASCII graph string
+5. **commit_graph.rs:** `parse_git_log_graph(output) -> Result<CommitGraph>`
+   - Parse ASCII graph lines
+   - Extract commit hashes (7-40 hex chars)
+   - Extract branch decorators: `(HEAD -> main, origin/main, tag: v1.0)`
+   - Extract subject lines (first text after hash/decorators)
+   - Return Vec<CommitNode> + raw lines for display
+6. **tui/graph_modal.rs:** Render modal (phase 3)
+   - Display graph lines in scrollable view
+   - Support pagination: `get_page(graph, page, page_size)`
+   - Show current page / total pages
+   - Allow user: ↑↓/jk to scroll, j/k to paginate, p: checkout, c: cherry-pick, etc.
+7. **Process exits modal:** Restore main TUI view, continue normal operation
+
+## Graph Visualization Pipeline (Phase 2-3)
+
+```
+Repository
+    │
+    ├─ git log --graph --all --oneline --decorate
+    │   (raw ASCII output with branch refs)
+    │
+    ▼ commit_graph::get_commit_graph()
+    │
+    ▼ (raw string)
+    │
+    ├─ commit_graph::parse_git_log_graph()
+    │   │ (parse_git_log_graph)
+    │   │
+    │   ├─ extract_hash() → commit hash (7-40 hex)
+    │   ├─ extract_decorators() → Vec<String> (HEAD, origin/*, tags)
+    │   └─ extract_subject() → commit message
+    │
+    ▼
+CommitGraph {
+    nodes: Vec<CommitNode>,    // hash, subject, decorators
+    graph_lines: Vec<String>,  // raw ASCII for display
+}
+    │
+    ├─ commit_graph::get_page(page, page_size)
+    │   │
+    │   ▼
+    │ Vec<(String, CommitNode)>  // graph_line + node data
+    │
+    ▼ tui/graph_modal.rs (phase 3)
+    │
+    ▼ Display in modal
+    │
+    ├─ Render graph lines as-is
+    ├─ Highlight commits w/ decorators
+    └─ Support operations: checkout, cherry-pick, rebase, merge
+```
+
+**Key Design Decisions:**
+- Graph parser is decoupled from git operations (separate module)
+- CommitNode is self-contained; suitable for UI rendering
+- Pagination support built-in for large repos (1000+ commits)
+- Raw graph lines preserved exactly as git outputs them (no re-rendering)
 
 ## Parallelization Strategy
 

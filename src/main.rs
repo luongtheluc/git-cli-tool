@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 mod cli;
+mod commit_graph;
 mod git_runner;
 mod repo_scanner;
 mod text_utils;

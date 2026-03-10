@@ -98,7 +98,7 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 - Sort post-collection for alphabetical order
 - Enhanced fields fallback gracefully (tag="", time=now, count=0)
 
-### git_runner.rs (187 LOC)
+### git_runner.rs (250 LOC)
 **Purpose:** Wrapper around system Git binary; execute Git commands safely
 
 **Key Components:**
@@ -106,8 +106,16 @@ run_batch(&repos, &selected, |path| git_runner::operation(path, args...));
 - Basic queries: `get_branch()`, `get_last_commit()`, `has_changes()`, `status_files()`
 - Repo operations: `checkout(branch, create)`, `pull()`, `push()`, `commit()`, `fetch()`
 - Enhanced metadata: `get_latest_tag()`, `get_last_commit_time()`, `changed_file_count()`
+- Graph operations: `get_commit_graph()`, `git_checkout()`, `git_cherry_pick()`, `git_rebase()`, `git_merge()`
 - `BuildTool` enum + `detect_build_tool()`, `resolve_script()`, `run_shell()` — for `repo run`
-- **9 unit tests** covering branch, commit, changes detection, commits, shell execution
+- **14 unit tests** covering branch, commit, changes detection, graph operations, shell execution
+
+**New Functions (Phase 2 - Graph Visualization):**
+- `get_commit_graph(path, limit) -> Result<String>` — Fetch git log graph; `git log --graph --all --oneline --decorate --color=never -n <limit>`
+- `git_checkout(path, ref_name) -> Result<String>` — Checkout branch or commit hash
+- `git_cherry_pick(path, commit_hash) -> Result<String>` — Cherry-pick specific commit
+- `git_rebase(path, onto_ref) -> Result<String>` — Rebase current branch onto target
+- `git_merge(path, ref_name) -> Result<String>` — Merge branch or commit into current
 
 **Responsibilities:**
 - Invoke system Git via std::process::Command with `git -C` (avoid chdir)
@@ -135,6 +143,36 @@ Command::new("git")
     .output()
     // Parse stdout on success, stderr on failure
 ```
+
+### commit_graph.rs (180 LOC)
+**Purpose:** Parse and paginate git commit graph from git log output
+
+**Key Components:**
+- `CommitGraph` struct — holds parsed nodes and raw graph lines
+- `CommitNode` struct — commit hash, subject, decorators (branch/tag refs), graph_line
+- `parse_git_log_graph(output: &str) -> Result<CommitGraph>` — Main parser
+- `get_page(graph, page, page_size) -> Vec<(String, CommitNode)>` — Pagination support
+- Helper functions: `extract_hash()`, `extract_decorators()`, `extract_subject()`, `is_short_hash()`
+- `DEFAULT_PAGE_SIZE` constant = 50
+- **8 unit tests** covering single/multi-commit parsing, branch refs, ASCII graphs, merge commits, empty output
+
+**Responsibilities:**
+- Parse `git log --graph --all --oneline --decorate` ASCII output
+- Extract commit hashes (7-40 hex chars) from tokens
+- Parse branch decorators: `(HEAD -> main, origin/main, tag: v1.2.3)`
+- Extract subject line (first line after decorators)
+- Handle complex ASCII graph chars: `* |\\n |/ - +`
+- Support pagination for large graphs (configurable page size)
+- Return structured CommitNode for UI rendering
+
+**Dependencies:** anyhow, crate::tui::app::CommitNode
+
+**Key Design:**
+- Defensive parsing: `.unwrap_or_default()` for missing fields
+- Graph line preserved for display
+- Decorators extracted as Vec<String> for filtering in UI
+- Page calculation: start = page * page_size; handles page overflow gracefully
+- No external parsing libraries; hand-written parser for embedded deployment
 
 ### ui.rs (82 LOC)
 **Purpose:** Terminal UI — interactive repo selection and table display
@@ -213,7 +251,7 @@ Command::new("git")
 - `test_repos_sorted_alphabetically` — 3 repos sorted by name
 - `test_non_git_dirs_excluded` — non-.git dirs filtered out
 
-### git_runner tests (9)
+### git_runner tests (14)
 - `test_get_branch_returns_current_branch` — branch name matches current
 - `test_get_last_commit_returns_hash_and_message` — commit info parsed correctly
 - `test_has_changes_false_on_clean_repo` — clean repo returns false
@@ -223,6 +261,21 @@ Command::new("git")
 - `test_run_shell_failure_exit_code` — exit 1 returns Ok(false)
 - `test_run_shell_bad_command_returns_err_or_false` — unknown command fails gracefully
 - `test_run_shell_runs_in_repo_dir` — pwd/cd succeeds in repo dir
+- `test_get_commit_graph` — formats git log --graph correctly
+- `test_git_checkout` — checkout branch operation
+- `test_git_cherry_pick` — cherry-pick commit operation
+- `test_git_rebase` — rebase operation
+- `test_git_merge` — merge operation
+
+### commit_graph tests (8)
+- `test_parse_git_log_graph_basic` — single/multiple commit parsing
+- `test_parse_git_log_graph_with_merge` — complex merge graph structure
+- `test_extract_hash` — hex hash extraction from tokens
+- `test_extract_decorators` — branch/tag decoration parsing
+- `test_extract_subject` — commit subject line extraction
+- `test_is_short_hash` — valid hash format detection
+- `test_pagination` — page boundary calculations
+- `test_empty_output` — handles empty/whitespace-only input gracefully
 
 All tests use `tempfile` crate for isolated test repos.
 
@@ -244,6 +297,7 @@ src/
 ├── cli.rs
 ├── repo_scanner.rs
 ├── git_runner.rs
+├── commit_graph.rs
 ├── ui.rs
 ├── setup.rs
 └── tui/
@@ -288,12 +342,19 @@ main.rs
     └── git_runner::{checkout, pull, push, commit, fetch, status}()
         └── run_git() → Result<String>
 
+commit_graph.rs (phase 2: graph visualization)
+├── parse_git_log_graph() → CommitGraph
+│   └── extract_hash(), extract_decorators(), extract_subject()
+└── get_page() → Vec<(String, CommitNode)> (pagination support)
+    └── used by tui/graph_modal.rs (phase 3)
+
 tui/mod.rs (interactive TUI)
-├── app.rs → App state + StatusEntry
+├── app.rs → App state + StatusEntry + CommitNode
 ├── ui.rs → render() sidebar + status panel
 ├── events.rs → keyboard input (↑↓/jk, Space/a, p/P/f/c/b, q)
-└── batch_ops.rs → BatchOp enum + async executor
-    └── git_runner batch operations in thread
+├── batch_ops.rs → BatchOp enum + async executor
+├── graph_modal.rs (phase 3 - in progress) → Modal rendering with pagination
+└── git_runner integration → batch operations (pull/push/etc) in thread
 
 setup.rs (independent binary)
 ├── find_source_binary()
@@ -333,9 +394,10 @@ setup.rs (independent binary)
 
 ## Code Quality Metrics
 
-- **Total Source LOC:** ~800 (including TUI + batch ops; excluding tests)
-- **Test LOC:** ~190 (9 unit tests)
+- **Total Source LOC:** ~980 (including TUI + batch ops + commit_graph; excluding tests)
+- **Test LOC:** ~350 (22 unit tests: 14 git_runner + 4 repo_scanner + 8 commit_graph)
 - **Cyclomatic Complexity:** Low (no nested loops, simple error handling)
 - **Safe Code:** 100% (no unsafe blocks)
 - **Documentation:** All public functions doc-commented
 - **Async Code:** Batch operations run in tokio threads with live progress feedback
+- **Phase Progress:** Phase 1 & 2 complete; Phase 3 (Modal Rendering) in progress
